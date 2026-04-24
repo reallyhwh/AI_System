@@ -1,0 +1,2860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>规则版本管理 · 高保真</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #f2f6fd;
+            font-family: 'Inter', sans-serif;
+            padding: 28px 24px;
+            color: #13294b;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* 页面切换动画 */
+        .page {
+            transition: opacity 0.3s ease;
+        }
+        .page.hidden {
+            display: none;
+        }
+
+        /* 卡片质感 */
+        .card {
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px -14px rgba(12, 40, 80, 0.25), 0 8px 16px -8px rgba(0,32,64,0.12);
+            border: 1px solid #e4edfc;
+        }
+
+        /* 头部 */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .brand-icon {
+            background: linear-gradient(155deg, #8B1450, #a53a70);
+            width: 56px;
+            height: 56px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 30px;
+            box-shadow: 0 16px 22px -12px #8B1450;
+        }
+        .brand h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(145deg, #8B1450, #a53a70);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 返回按钮 */
+        .back-btn {
+            background: white;
+            border: 1px solid #f0d0e5;
+            color: #8B1450;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.15s;
+        }
+        .back-btn:hover {
+            background: #fef0f7;
+            border-color: #d86b9f;
+            box-shadow: 0 6px 12px -8px #8B1450;
+        }
+        .back-btn i {
+            color: #8B1450;
+        }
+
+        /* 版本卡片区域 */
+        .version-section {
+            margin-bottom: 24px;
+        }
+        .version-section h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #8B1450;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .version-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .version-card {
+            background: white;
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid #f0d0e5;
+            box-shadow: 0 12px 24px -16px #8B1450;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .version-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 32px -16px #8B1450;
+            border-color: #8B1450;
+        }
+        .version-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .version-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #8B1450;
+        }
+        .version-status {
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .version-status.active {
+            background: #e0f2e9;
+            color: #0f7b4e;
+        }
+        .version-status.inactive {
+            background: #ffe6e6;
+            color: #b13e3e;
+        }
+        .version-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+        .info-label {
+            color: #8B1450;
+            min-width: 70px;
+        }
+        .info-value {
+            color: #8B1450;
+            font-weight: 500;
+        }
+        .date-edit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .date-edit input {
+            padding: 6px 10px;
+            border: 1px solid #f0d0e5;
+            border-radius: 12px;
+            font-size: 13px;
+            width: 120px;
+        }
+        .date-edit input:focus {
+            border-color: #8B1450;
+            outline: none;
+        }
+        .save-date-btn {
+            background: white;
+            border: 1px solid #8B1450;
+            color: #8B1450;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .save-date-btn:hover {
+            background: #8B1450;
+            color: white;
+        }
+        .desc-edit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        .desc-input {
+            padding: 6px 10px;
+            border: 1px solid #f0d0e5;
+            border-radius: 12px;
+            font-size: 13px;
+            flex: 1;
+        }
+        .desc-input:focus {
+            border-color: #8B1450;
+            outline: none;
+        }
+        .group-select {
+            padding: 6px 10px;
+            border: 1px solid #f0d0e5;
+            border-radius: 12px;
+            font-size: 13px;
+            background: white;
+            min-width: 100px;
+        }
+        .group-select:focus {
+            border-color: #8B1450;
+            outline: none;
+        }
+        .group-value {
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            background: #f8f8f8;
+            min-width: 100px;
+            display: inline-block;
+        }
+        .save-desc-btn {
+            background: white;
+            border: 1px solid #8B1450;
+            color: #8B1450;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .save-desc-btn:hover {
+            background: #8B1450;
+            color: white;
+        }
+        .cancel-desc-btn {
+            background: white;
+            border: 1px solid #c0c0c0;
+            color: #666;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .cancel-desc-btn:hover {
+            background: #f0f0f0;
+        }
+        .desc-container {
+            flex: 1;
+            min-width: 0;
+        }
+        .desc-text {
+            display: block;
+            padding: 6px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .desc-text:hover {
+            background-color: #f5f5f5;
+        }
+        .rule-count {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f0d0e5;
+            color: #8B1450;
+            font-weight: 500;
+        }
+
+        /* 日志区域 */
+        .log-section {
+            background: white;
+            border-radius: 24px;
+            padding: 20px 24px;
+            border: 1px solid #e0ebfc;
+            box-shadow: 0 12px 24px -16px #0b3166;
+            margin-top: 24px;
+        }
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .log-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #8B1450;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .log-filters {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .log-filters input, .log-filters select {
+            padding: 8px 14px;
+            border: 1px solid #f0d0e5;
+            border-radius: 16px;
+            font-size: 14px;
+            background: white;
+        }
+        .log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        .log-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            background: #fef0f7;
+            border-radius: 16px;
+            border: 1px solid #f0d0e5;
+            gap: 20px;
+            transition: all 0.2s;
+        }
+
+        .log-time {
+            font-weight: 600;
+            color: #8B1450;
+            min-width: 160px;
+        }
+        .log-version {
+            background: #f0d0e5;
+            color: #8B1450;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            min-width: 80px;
+            text-align: center;
+        }
+        .log-user {
+            color: #8B1450;
+            min-width: 100px;
+        }
+        .log-change {
+            flex: 1;
+            color: #2c3e5c;
+        }
+        .log-detail {
+            font-size: 13px;
+            color: #8B1450;
+            background: #fef0f7;
+            padding: 4px 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .log-detail:hover {
+            background: #8B1450;
+            color: white;
+        }
+
+        /* 规则配置界面 - 查询和表单合并区域 */
+        .query-form-section {
+            background: white;
+            border-radius: 28px;
+            border: 1px solid #dfebfc;
+            box-shadow: 0 18px 38px -16px #0f3169;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        /* 查询区域 - 包含自然语音配置 */
+        .query-section {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e2edff;
+            background: #f8fcff;
+        }
+        .query-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .query-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #8B1450;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ai-panel {
+            background: white;
+            border-radius: 50%;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #f0d0e5;
+            box-shadow: 0 4px 12px -8px #8B1450;
+            cursor: pointer;
+        }
+        .ai-panel:hover {
+            background: #fef0f7;
+            border-color: #d86b9f;
+        }
+        .ai-panel i {
+            color: #8B1450;
+            font-size: 20px;
+        }
+        .ai-panel input {
+            border: none;
+            background: transparent;
+            flex: 1;
+            font-size: 14px;
+            padding: 10px 0;
+            outline: none;
+        }
+        .ai-panel input::placeholder {
+            color: #8B1450;
+        }
+        .ai-panel button {
+            background: #8B1450;
+            border: none;
+            color: white;
+            font-weight: 500;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.15s;
+        }
+        .ai-panel button:hover {
+            background: #a53a70;
+        }
+        .query-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px 20px;
+        }
+        .query-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .query-item label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8B1450;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .query-item input, .query-item select {
+            padding: 10px 14px;
+            border: 1px solid #f0d0e5;
+            border-radius: 16px;
+            font-size: 14px;
+            background: white;
+            transition: 0.15s;
+            outline: none;
+        }
+        .query-item input:focus, .query-item select:focus {
+            border-color: #8B1450;
+            box-shadow: 0 0 0 3px rgba(139, 20, 80, 0.2);
+        }
+        .query-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .query-btn {
+            background: #8B1450;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.15s;
+        }
+        .query-btn:hover {
+            background: #a53a70;
+        }
+        .reset-btn {
+            background: white;
+            border: 1px solid #f0d0e5;
+            color: #8B1450;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.15s;
+        }
+        .reset-btn:hover {
+            background: #fef0f7;
+            border-color: #d86b9f;
+        }
+
+        /* 操作栏 - 下拉菜单样式 */
+        .table-action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e2edff;
+            position: relative;
+        }
+        .action-btn {
+            background: #ffffff;
+            border: 1px solid #f0d0e5;
+            color: #8B1450;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .action-btn i { color: #8B1450; }
+        .action-btn:hover {
+            background: #fef0f7;
+            border-color: #d86b9f;
+            box-shadow: 0 6px 12px -8px #8B1450;
+        }
+        .action-btn.primary-fill {
+            background: #8B1450;
+            border-color: #8B1450;
+            color: white;
+        }
+        .action-btn.primary-fill i { color: white; }
+        .divider-vertical {
+            width: 1px;
+            height: 30px;
+            background: #d2e2f5;
+            margin: 0 6px;
+        }
+        .spacer { flex: 1; }
+
+        /* 导入按钮下拉菜单 */
+        .import-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            min-width: 200px;
+            border-radius: 16px;
+            box-shadow: 0 12px 24px -12px #0b3166;
+            border: 1px solid #e0ebfc;
+            z-index: 1000;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+        .dropdown-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: 0.15s;
+            color: #1f3c78;
+            font-size: 14px;
+        }
+        .dropdown-item:hover {
+            background: #f0f7ff;
+        }
+        .dropdown-item i {
+            color: #2563eb;
+            width: 20px;
+        }
+        .dropdown-item:not(:last-child) {
+            border-bottom: 1px solid #e2edff;
+        }
+
+        /* 表格区域 */
+        .table-wrapper {
+            padding: 0 0 0 0;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1100px;
+            font-size: 13.5px;
+        }
+        th {
+            text-align: left;
+            padding: 18px 12px;
+            background: #fef0f7;
+            font-weight: 600;
+            color: #8B1450;
+            border-bottom: 2px solid #f0d0e5;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td {
+            padding: 12px 12px;
+            border-bottom: 1px solid #f0d0e5;
+            color: #1c3155;
+            vertical-align: middle;
+        }
+        tr:hover td {
+            background-color: #fef0f7;
+        }
+        
+        /* 行内编辑样式 - 包括新增空白行 */
+        .editing-row {
+            background-color: #fff9e6 !important;
+            box-shadow: inset 0 0 0 2px #8B1450;
+        }
+        .editing-row td {
+            background-color: #fff9e6;
+        }
+        .new-row {
+            background-color: #fef0f7 !important;
+            box-shadow: inset 0 0 0 2px #0f7b4e;
+        }
+        .new-row td {
+            background-color: #fef0f7;
+        }
+        .inline-edit-input, .inline-edit-select, .inline-edit-textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #8B1450;
+            border-radius: 12px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            background: white;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(139, 20, 80, 0.2);
+        }
+        .inline-edit-textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        .inline-edit-select {
+            height: 38px;
+        }
+        .edit-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+        .edit-actions i {
+            font-size: 18px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 30px;
+        }
+        .edit-actions .fa-check-circle {
+            color: #0f7b4e;
+        }
+        .edit-actions .fa-check-circle:hover {
+            background: #e0f2e9;
+        }
+        .edit-actions .fa-times-circle {
+            color: #b13e3e;
+        }
+        .edit-actions .fa-times-circle:hover {
+            background: #ffe6e6;
+        }
+        
+        .rule-badge {
+            background: #dee9fa;
+            color: #11356e;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 40px;
+            font-size: 12px;
+            display: inline-block;
+            box-shadow: inset 0 1px 3px #fff, 0 2px 4px #b6cfee;
+        }
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #c1d3ec;
+            border-radius: 40px;
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .toggle-switch.active { background: #0f7b4e; }
+        .toggle-switch:after {
+            content: "";
+            width: 20px; height: 20px;
+            background: white;
+            border-radius: 20px;
+            position: absolute;
+            top: 2px; left: 2px;
+            transition: left 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .toggle-switch.active:after { left: 22px; }
+        .action-icons i {
+            color: #4b70a5;
+            margin: 0 6px;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: 0.1s;
+            padding: 6px;
+            border-radius: 30px;
+        }
+        .action-icons i:hover {
+            opacity: 1;
+            background: #e4efff;
+            color: #1e3a8a;
+        }
+        .action-icons i.fa-trash-alt:hover { color: #b22222; background: #ffebeb; }
+        
+        .code-tag {
+            font-family: monospace;
+            background: #eef3fd;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #15428b;
+            font-weight: 500;
+        }
+
+        /* 分页区域 */
+        .pagination-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: white;
+            border-top: 1px solid #e2edff;
+        }
+        .pagination-info {
+            color: #8B1450;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .pagination-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .pagination-btn {
+            background: white;
+            border: 1px solid #f0d0e5;
+            color: #8B1450;
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.15s;
+            font-size: 14px;
+        }
+        .pagination-btn:hover:not(:disabled) {
+            background: #fef0f7;
+            border-color: #d86b9f;
+        }
+        .pagination-btn.active {
+            background: #8B1450;
+            border-color: #8B1450;
+            color: white;
+        }
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .page-size-select {
+            padding: 8px 12px;
+            border: 1px solid #cfdff2;
+            border-radius: 12px;
+            font-size: 14px;
+            color: #1f3c78;
+            background: white;
+            margin-left: 16px;
+            outline: none;
+        }
+        .page-size-select:focus {
+            border-color: #2563eb;
+        }
+
+        /* 美化后的检查弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 20, 50, 0.6);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: linear-gradient(145deg, #ffffff, #f8fcff);
+            border-radius: 32px;
+            width: 720px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 32px 36px;
+            box-shadow: 0 30px 60px -20px #0b1e3e, 0 0 0 1px rgba(37, 99, 235, 0.1);
+            transform: scale(0.95) translateY(10px);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1) translateY(0);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f0d0e5;
+        }
+        .modal-header h2 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #8B1450;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .modal-header h2 i {
+            color: #8B1450;
+            background: #fef0f7;
+            padding: 10px;
+            border-radius: 50%;
+            font-size: 22px;
+        }
+        .modal-close {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #fef0f7;
+            border: 1px solid #f0d0e5;
+            color: #8B1450;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background: #8B1450;
+            color: white;
+            border-color: #8B1450;
+            transform: rotate(90deg);
+        }
+        .check-result-content {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 20px 24px;
+            border: 1px solid #e2edff;
+            margin-bottom: 28px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .check-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid #eef3fa;
+        }
+        .check-item:last-child {
+            border-bottom: none;
+        }
+        .check-item .status-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .check-item .status-icon.pass {
+            background: #e0f2e9;
+            color: #0f7b4e;
+            box-shadow: 0 4px 8px rgba(15, 123, 78, 0.2);
+        }
+        .check-item .status-icon.warn {
+            background: #fff3e0;
+            color: #b45b0f;
+            box-shadow: 0 4px 8px rgba(180, 91, 15, 0.2);
+        }
+        .check-item .status-icon.error {
+            background: #ffe6e6;
+            color: #b13e3e;
+            box-shadow: 0 4px 8px rgba(177, 62, 62, 0.2);
+        }
+        .check-item .check-detail {
+            flex: 1;
+        }
+        .check-item .check-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 6px;
+            color: #8B1450;
+        }
+        .check-item .check-desc {
+            font-size: 14px;
+            color: #8B1450;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .check-item .check-suggestion {
+            font-size: 13px;
+            color: #8B1450;
+            background: #fef0f7;
+            padding: 8px 14px;
+            border-radius: 40px;
+            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #f0d0e5;
+        }
+        .check-item .check-suggestion i {
+            font-size: 14px;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .modal-btn {
+            background: #8B1450;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 14px 36px;
+            border-radius: 60px;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+            box-shadow: 0 8px 16px -8px #8B1450;
+        }
+        .modal-btn:hover {
+            background: #a53a70;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -10px #8B1450;
+        }
+        .modal-btn.secondary {
+            background: white;
+            border: 1px solid #f0d0e5;
+            color: #8B1450;
+            box-shadow: none;
+        }
+        .modal-btn.secondary:hover {
+            background: #fef0f7;
+            border-color: #d86b9f;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px -8px #f0d0e5;
+        }
+
+        .rule-detail-content {
+            background: #fef0f7;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #f0d0e5;
+        }
+        .rule-detail-item {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0d0e5;
+        }
+        .rule-detail-item:last-child {
+            border-bottom: none;
+        }
+        .rule-detail-label {
+            width: 120px;
+            font-weight: 600;
+            color: #8B1450;
+        }
+        .rule-detail-value {
+            flex: 1;
+            color: #2c3e5c;
+        }
+        .rule-detail-value pre {
+            background: white;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #f0d0e5;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px; right: 30px;
+            background: #8B1450;
+            color: white;
+            padding: 14px 30px;
+            border-radius: 60px;
+            font-weight: 500;
+            box-shadow: 0 20px 36px -12px #8B1450;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: 0.25s;
+            z-index: 10000;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 规则版本管理页面 -->
+    <div id="versionPage" class="page">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="brand">
+                <div class="brand-icon"><i class="fas fa-code-branch"></i></div>
+                <h1>规则版本管理</h1>
+            </div>
+            <button class="back-btn" id="homeBackBtn" onclick="window.location.href='file:///C:/Users/EDY/Downloads/AI智能报销系统/index.html'; console.log('返回首页按钮被点击');"><i class="fas fa-arrow-left"></i> 返回首页</button>
+        </div>
+
+        <!-- 版本卡片区域 -->
+        <div class="version-section">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h2><i class="fas fa-layer-group"></i> 所有版本</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button id="prevVersionBtn" class="action-btn" style="padding: 8px 16px;"><i class="fas fa-chevron-left"></i> 上一页</button>
+                    <button id="nextVersionBtn" class="action-btn" style="padding: 8px 16px;">下一页 <i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="version-grid" id="versionGrid">
+                <!-- 动态生成版本卡片 -->
+            </div>
+        </div>
+
+        <!-- 规则修改日志区域 -->
+        <div class="log-section">
+            <div class="log-header">
+                <h3><i class="fas fa-history"></i> 规则修改日志</h3>
+                <div class="log-filters">
+                    <select id="logVersionFilter">
+                        <option value="">所有版本</option>
+                        <option value="v1.0.0">v1.0.0</option>
+                        <option value="v1.1.0">v1.1.0</option>
+                        <option value="v1.2.0">v1.2.0</option>
+                    </select>
+                    <input type="text" id="logSearch" placeholder="搜索规则编码或内容...">
+                </div>
+            </div>
+            <div class="log-list" id="logList">
+                <!-- 动态生成日志 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 规则配置页面 -->
+    <div id="configPage" class="page hidden">
+        <!-- 头部带返回按钮 -->
+        <div class="header">
+            <div class="brand">
+                <div class="brand-icon"><i class="fas fa-sliders-h"></i></div>
+                <h1>规则配置</h1>
+            </div>
+            <button class="back-btn" id="backBtn"><i class="fas fa-arrow-left"></i> 返回版本管理</button>
+        </div>
+
+        <!-- 查询和表单合并区域 -->
+        <div class="query-form-section">
+            <!-- 查询区域（含自然语音配置） -->
+            <div class="query-section">
+                <div class="query-header">
+                    <h3><i class="fas fa-search"></i> 规则查询 <span id="currentVersionDisplay" style="font-size:14px; color:#8B1450; margin-left:12px;"></span></h3>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="ai-panel" id="voiceBtn" onclick="document.getElementById('voiceModal').style.display='block'; console.log('语音按钮被点击，显示弹窗');">
+                            <i class="fas fa-microphone-alt"></i>
+                        </div>
+                        <button class="action-btn" style="margin: 0;"><i class="fas fa-check-circle"></i> 生效</button>
+                    </div>
+                </div>
+                <div class="query-grid">
+                    <div class="query-item">
+                        <label>规则编码</label>
+                        <input type="text" id="queryCode" placeholder="输入规则编码...">
+                    </div>
+                    <div class="query-item">
+                        <label>规则分类 <span style="color: #f53f3f;">*</span></label>
+                        <select id="queryCategory">
+                            <option value="">全部</option>
+                            <option value="出差申请">出差申请</option>
+                            <option value="差旅报销">差旅报销</option>
+                            <option value="员工报销">员工报销</option>
+                        </select>
+                    </div>
+                    <div class="query-item">
+                        <label>规则名称/费用项目 <span style="color: #f53f3f;">*</span></label>
+                        <input type="text" id="queryItem" placeholder="输入规则名称...">
+                    </div>
+                    <div class="query-item">
+                        <label>发票类型</label>
+                        <input type="text" id="queryInvoice" placeholder="输入发票类型...">
+                    </div>
+                    <div class="query-item">
+                        <label>规则内容 <span style="color: #f53f3f;">*</span></label>
+                        <input type="text" id="queryContent" placeholder="输入规则内容...">
+                    </div>
+                    <div class="query-item">
+                        <label>是否禁止提交 <span style="color: #f53f3f;">*</span></label>
+                        <select id="queryAllowSubmit">
+                            <option value="">全部</option>
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                    <div class="query-item">
+                        <label>结果处理 <span style="color: #f53f3f;">*</span></label>
+                        <input type="text" id="queryResult" placeholder="输入结果处理...">
+                    </div>
+                </div>
+                <div class="query-actions">
+                    <button class="reset-btn" id="resetBtn"><i class="fas fa-undo-alt"></i> 重置</button>
+                    <button class="query-btn" id="queryBtn"><i class="fas fa-search"></i> 查询</button>
+                </div>
+            </div>
+
+            <!-- 操作栏 - 导入按钮改为下拉菜单 -->
+            <div class="table-action-bar">
+                <button class="action-btn primary-fill" id="newRuleBtn"><i class="fas fa-plus"></i> 新建规则</button>
+                <!-- 导入下拉菜单 -->
+                <div class="import-dropdown" id="importDropdown">
+                    <button class="action-btn" id="importBtn"><i class="fas fa-file-import"></i> 导入 <i class="fas fa-chevron-down" style="font-size:12px; margin-left:4px;"></i></button>
+                    <div class="dropdown-content" id="importDropdownContent">
+                        <div class="dropdown-item" id="downloadTemplateBtn">
+                            <i class="fas fa-download"></i> 下载导入模板
+                        </div>
+                        <div class="dropdown-item" id="importFileBtn">
+                            <i class="fas fa-upload"></i> 导入
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="action-btn"><i class="fas fa-file-export"></i> 导出</button>
+                <div class="divider-vertical"></div>
+                <button class="action-btn"><i class="fas fa-trash-alt"></i> 删除</button>
+                <div class="spacer"></div>
+                
+                <!-- 一键复制按钮 -->
+                <button class="action-btn primary-fill" id="saveAsNewVersionBtn" title="是否生成新版本"><i class="fas fa-code-branch"></i> 一键复制</button>
+            </div>
+
+            <!-- 表格区域 -->
+            <div class="table-wrapper">
+                <table id="ruleTable">
+                    <thead>
+                        <tr>
+                            <th style="width:30px"><input type="checkbox" style="transform:scale(1.2);"></th>
+                            <th>规则编码</th>
+                            <th>规则分类 <span style="color: #f53f3f;">*</span></th>
+                            <th>规则名称/费用项目 <span style="color: #f53f3f;">*</span></th>
+                            <th>发票类型</th>
+                            <th>规则内容 <span style="color: #f53f3f;">*</span></th>
+                            <th>是否禁止提交 <span style="color: #f53f3f;">*</span></th>
+                            <th>结果处理 <span style="color: #f53f3f;">*</span></th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- 动态JS生成数据 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页区域 -->
+            <div class="pagination-section">
+                <div class="pagination-info">
+                    显示 <span id="startRecord">1</span> - <span id="endRecord">10</span> 条，共 <span id="totalRecords">29</span> 条
+                </div>
+                <div class="pagination-controls">
+                    <select class="page-size-select" id="pageSize">
+                        <option value="10">10条/页</option>
+                        <option value="20">20条/页</option>
+                        <option value="50">50条/页</option>
+                    </select>
+                    <button class="pagination-btn" id="firstPage" disabled><i class="fas fa-angle-double-left"></i></button>
+                    <button class="pagination-btn" id="prevPage" disabled><i class="fas fa-angle-left"></i></button>
+                    <div id="pageNumbers" style="display: flex; gap: 4px; align-items: center;"></div>
+                    <button class="pagination-btn" id="nextPage"><i class="fas fa-angle-right"></i></button>
+                    <button class="pagination-btn" id="lastPage"><i class="fas fa-angle-double-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 规则详情弹窗 -->
+    <div class="modal-overlay" id="ruleDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-alt"></i> 规则修改详情</h2>
+                <button class="modal-close" id="closeDetailModal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="rule-detail-content" id="ruleDetailContent">
+                <!-- 动态生成规则详情 -->
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn" id="closeDetailBtn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入文件弹窗（模拟） -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-upload"></i> 导入规则</h2>
+                <button class="modal-close" id="closeImportModal"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 20px; text-align: center;">
+                <div style="border: 2px dashed #cfdff2; border-radius: 20px; padding: 40px; margin-bottom: 20px;">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #2563eb; margin-bottom: 16px;"></i>
+                    <p style="color: #1f3c78; margin-bottom: 8px;">点击或拖拽文件到此处上传</p>
+                    <p style="color: #7d9bc3; font-size: 13px;">支持 .xlsx, .xls 格式</p>
+                </div>
+                <button class="modal-btn" style="width: 100%;" id="selectFileBtn">选择文件</button>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" id="cancelImportBtn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 规则合理性检查弹窗 -->
+    <div class="modal-overlay" id="checkModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-clipboard-check"></i> 规则合理性检查</h2>
+                <button class="modal-close" id="closeModal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="check-result-content" id="modalCheckResult">
+                <!-- 动态生成检查结果 -->
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" id="modalCancel">关闭</button>
+                <button class="modal-btn" id="modalConfirm">继续操作</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- toast模拟 -->
+    <div id="toast" class="toast"><i class="fas fa-info-circle"></i> <span id="toastText">演示交互</span></div>
+</div>
+
+<script>
+    console.log('JavaScript代码开始执行');
+    (function() {
+        console.log('立即执行函数开始');
+        // 版本数据
+        const versions = [
+            {
+                id: 'v1.0.0',
+                name: 'v1.0.0',
+                desc: '基础规则集',
+                status: 'draft',
+                ruleCount: 29,
+                activeCount: 26,
+                inactiveCount: 3
+            },
+            {
+                id: 'v1.1.0',
+                name: 'v1.1.0',
+                desc: '新增市场费用',
+                status: 'inactive',
+                ruleCount: 35,
+                activeCount: 32,
+                inactiveCount: 3
+            },
+            {
+                id: 'v1.2.0',
+                name: 'v1.2.0',
+                desc: '优化差旅规则',
+                status: 'active',
+                ruleCount: 29,
+                activeCount: 27,
+                inactiveCount: 2
+            },
+            {
+                id: 'v1.3.0',
+                name: 'v1.3.0',
+                desc: '新增员工福利规则',
+                status: 'draft',
+                ruleCount: 32,
+                activeCount: 30,
+                inactiveCount: 2
+            },
+            {
+                id: 'v1.4.0',
+                name: 'v1.4.0',
+                desc: '优化报销流程',
+                status: 'draft',
+                ruleCount: 31,
+                activeCount: 28,
+                inactiveCount: 3
+            }
+        ];
+
+        // 当前版本标识，用于标记本次修改的日志
+        let currentVersionId = 'v1.2.0';
+        
+        // 日志数据
+        const logData = [
+            {
+                time: "2026-03-19 11:05:22", 
+                version: "v1.2.0", 
+                versionId: "v1.2.0", 
+                user: "王茜",
+                changes: [
+                    { ruleCode: "R026", ruleName: "研讨会费", action: "新增", field: "规则内容", oldValue: "", newValue: "检查是否上传参与人员清单/会议议程/餐费菜单/活动照片/租用场地合同" }
+                ]
+            },
+            {
+                time: "2026-03-18 16:42:10", 
+                version: "v1.1.0", 
+                versionId: "v1.1.0", 
+                user: "刘倩倩",
+                changes: [
+                    { ruleCode: "V1.1.0", ruleName: "版本管理", action: "修改", field: "版本状态", oldValue: "启用", newValue: "停用" }
+                ]
+            },
+            {
+                time: "2026-03-18 09:33:47", 
+                version: "v1.1.0", 
+                versionId: "v1.1.0", 
+                user: "胡海燕",
+                changes: [
+                    { ruleCode: "R020", ruleName: "防暑降温饮料费", action: "修改", field: "生效时间", oldValue: "2025-05-01", newValue: "2025-06-01" }
+                ]
+            },
+            {
+                time: "2026-03-17 15:18:03", 
+                version: "v1.0.0", 
+                versionId: "v1.0.0", 
+                user: "姚燕萍",
+                changes: [
+                    { ruleCode: "R001", ruleName: "市场费用规则", action: "批量导入", field: "规则内容", oldValue: "", newValue: "新增1条规则" }
+                ]
+            },
+
+        ];
+
+        // 当前选中的版本
+        let currentVersion = versions[2];
+        
+        // 版本分页变量
+        let currentVersionPage = 1;
+        const versionsPerPage = 3;
+
+        // 规则数据
+        const rules = [
+            ["R001", "出差申请", "出差申请审核规则", "", "检查费用是否第三方单位承担", "用户提示：当前未第三方承担费用，请上传费用承担确认函！"],
+            ["R002", "出差申请", "出差申请审核规则", "", "检查交通工具为自驾，往返公里数是否大于700公里", "审批提示：往返公里数>=700公里，自驾车出行，请审批！"],
+            ["R003", "出差申请", "出差申请审核规则", "", "检查创建日期是否晚于出差开始日期", "用户提示：当前创建日期晚于出差开始日期，请在签字意见备注原因！"],
+            ["R004", "出差申请", "出差申请审核规则", "", "检查目的地是否为其他城市", "用户提示：当前目的地为：其他城市，请在出差公司填写明确的出差城市！"],
+            ["R005", "差旅报销", "差旅信息审核规则", "", "检查“申请出发日”和“申请返程日”、“申请天数”与实际是否一致", "用户提示：当前差异很大，请确认出差申请是否选错！"],
+            ["R006", "差旅报销", "差旅信息审核规则", "", "检查“非自费用餐”的午餐、晚餐次数是否都为0", "用户提示：当前非自费午餐、晚餐都为0，请确认！"],
+            ["R007", "差旅报销", "差旅信息审核规则", "", "检查“报销事由”是否有“培训”字眼，区域销售培训，不能享受补贴", "用户提示：当前为区域销售培训，不享受补贴！"],
+            ["R008", "差旅报销", "住宿费审核规则", "增值税专用发票", "检查酒店住宿水单中的酒店名称、开票金额、住宿时间、住宿人是否与报销内容一致", "用户提示：当前存在额外消费，是否扣减额外消费金额！"],
+            ["R009", "差旅报销", "住宿费审核规则", "增值税专用发票", "检查住宿费金额是否超出住宿标准", "用户提示：当前住宿标准超标，请填写超标原因！"],
+            ["R010", "差旅报销", "高速费审核规则", "增值税专用发票", "检查ETC明细里的时间段是否在出差时间和出差起始地范围内", "用户提示：当前ETC时间段不在出差时间内，请处理！"],
+            ["R011", "差旅报销", "自驾审核规则", "", "检查是否上传百度里程截图", "用户提示：当前未上传百度里程截图，请上传！"],
+            ["R012", "员工报销", "购买文具、办公耗材等办公用品", "增值税发票", "金额1000元以上的需提供支付凭据", "用户提示：当前金额较大，需提供支付凭证！"],
+            ["R013", "员工报销", "EDP耗材（硒鼓、墨盒）", "增值税发票", "检查支付金额与报销金额是否一致", "用户提示：当前支付金额与报销金额不一致"],
+            ["R014", "员工报销", "国内差旅费（不含培训）", "", "审核所附出差申请单是否已审批完成", "驳回提示：当前出差申请单未审批完成！"],
+            ["R015", "员工报销", "国内差旅费（不含培训）", "", "审核所附发票的开票日期，是否在出差申请单对应的差旅报销的出差期间内", "用户提示：当前发票日期不在出差期间，请重新上传！"],
+            ["R016", "员工报销", "国内差旅费（不含培训）", "", "报销住宿费的，需提供住宿水单", "1.水单未上传提示；2.内容不一致提示；3.额外消费扣减"],
+            ["R017", "员工报销", "国内差旅费（培训）", "", "审核所附出差申请单是否已审批完成", "驳回提示：当前出差申请单未审批完成！"],
+            ["R018", "员工报销", "低值工具小于500元", "增值税发票", "检查附件内容是否与报销内容一致", "用户提示：当前附件内容与报销内容不一致，请处理！"],
+            ["R019", "员工报销", "交通罚款和滞纳金", "非税收入一般缴款书", "检查被处罚的公司车辆牌号是否有填", "用户提示：被处罚的公司车辆牌号必选！"],
+            ["R020", "员工报销", "防暑降温饮料费", "增值税发票", "检查审核费用归属期间是否在HR通知发放的月份内", "驳回提示：当前费用归属期间不在HR通知发放的月份内！"],
+            ["R021", "员工报销", "关爱中心（生日、结婚、新生儿等）", "增值税发票", "检查是否上传结婚证或新生儿出生证明附件", "用户提示：当前未上传结婚证或新生儿出生证明，请上传！"],
+            ["R022", "员工报销", "型式试验相关费用", "", "检查是否上传型式试验协议书、机构人员名单", "用户提示：未上传必要附件，请上传！"],
+            ["R023", "员工报销", "招待餐费", "增值税普通发票", "检查实际报销金额是否超过交际应酬申请单的预计费用", "用户提示：当前超过预计费用，请在说明二备注原因！"],
+            ["R024", "员工报销", "招待餐费", "增值税普通发票", "检查单笔招待金额是否在500元以上", "用户提示：当前单笔招待金额在500元以上，请上传菜单！"],
+            ["R025", "员工报销", "车辆维修和保养", "", "检查是否上传报价单或维修清单/维修申请", "用户提示：当前未上传报价单或维修清单/维修申请，请上传！"],
+            ["R026", "员工报销", "研讨会费", "", "检查是否上传参与人员清单/会议议程/餐费菜单/活动照片/租用场地合同", "用户提示：当前未上传必要附件，请上传！"],
+            ["R027", "员工报销", "展览费", "", "检查租用场地应开具的发票项目内容是否为“会展服务*会务费”", "用户提示：当前发票项目内容非“会展服务*会务费”，请处理！"],
+            ["R028", "员工报销", "配件销售运费", "增值税发票", "检查是否上传承运商提供的运单明细", "用户提示：当前未上传承运商提供的运单明细，请上传！"],
+            ["R029", "员工报销", "办公室租金", "增值税发票", "检查是否上传房租租赁合同", "用户提示：当前未上传房租租赁合同，请上传！"],
+        ];
+
+        // 添加状态和是否允许提交字段
+        const enriched = rules.map((r, idx) => {
+            let active = true;
+            if (idx === 2 || idx === 7 || idx === 19) active = false;
+            return {
+                code: r[0],
+                category: r[1],
+                item: r[2],
+                invoiceType: r[3] || '—',
+                content: r[4],
+                result: r[5],
+                active: active,
+                allowSubmit: true, // 默认允许提交
+            };
+        });
+
+        // 分页变量
+        let currentPage = 1;
+        let pageSize = 10;
+        let filteredData = [...enriched];
+
+        // 当前正在编辑的行索引
+        let editingRowIndex = -1;
+
+        // 新增行数组 - 支持多行新增
+        let newRows = [];
+        // 是否处于新增模式
+        let isAddingNew = false;
+
+        // 获取DOM元素
+        console.log('开始获取DOM元素');
+        const versionPage = document.getElementById('versionPage');
+        console.log('versionPage:', versionPage);
+        const configPage = document.getElementById('configPage');
+        console.log('configPage:', configPage);
+        const versionGrid = document.getElementById('versionGrid');
+        console.log('versionGrid:', versionGrid);
+        const backBtn = document.getElementById('backBtn');
+        console.log('backBtn:', backBtn);
+        const homeBackBtn = document.getElementById('homeBackBtn');
+        console.log('homeBackBtn:', homeBackBtn);
+        const currentVersionDisplay = document.getElementById('currentVersionDisplay');
+        const logList = document.getElementById('logList');
+        const logVersionFilter = document.getElementById('logVersionFilter');
+        const logSearch = document.getElementById('logSearch');
+        const ruleDetailModal = document.getElementById('ruleDetailModal');
+        const ruleDetailContent = document.getElementById('ruleDetailContent');
+        const closeDetailModal = document.getElementById('closeDetailModal');
+        const closeDetailBtn = document.getElementById('closeDetailBtn');
+        const tbody = document.getElementById('tableBody');
+        const startSpan = document.getElementById('startRecord');
+        const endSpan = document.getElementById('endRecord');
+        const totalSpan = document.getElementById('totalRecords');
+        const pageSizeSelect = document.getElementById('pageSize');
+        const firstBtn = document.getElementById('firstPage');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        const lastBtn = document.getElementById('lastPage');
+        const pageNumbers = document.getElementById('pageNumbers');
+        const checkModal = document.getElementById('checkModal');
+        const modalCheckResult = document.getElementById('modalCheckResult');
+        const closeModal = document.getElementById('closeModal');
+        const modalCancel = document.getElementById('modalCancel');
+        const modalConfirm = document.getElementById('modalConfirm');
+        const newRuleBtn = document.getElementById('newRuleBtn');
+        const editRuleBtn = document.getElementById('editRuleBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importDropdown = document.getElementById('importDropdown');
+        const importDropdownContent = document.getElementById('importDropdownContent');
+        const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+        const importFileBtn = document.getElementById('importFileBtn');
+        const importModal = document.getElementById('importModal');
+        const closeImportModal = document.getElementById('closeImportModal');
+        const cancelImportBtn = document.getElementById('cancelImportBtn');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+
+        // 模板数据
+        const templateHeaders = ['规则编码', '规则分类', '规则名称/费用项目', '发票类型', '规则内容', '结果处理'];
+        const templateData = [
+            ['R001', '出差申请', '出差申请审核规则', '', '检查费用是否第三方单位承担', '用户提示'],
+            ['R002', '出差申请', '出差申请审核规则', '', '检查交通工具为自驾，往返公里数是否大于700公里', '审批提示'],
+            ['R003', '员工报销', '购买文具、办公耗材等办公用品', '增值税发票', '金额1000元以上的需提供支付凭据', '用户提示'],
+        ];
+
+        // 渲染版本卡片
+        function renderVersions() {
+            let html = '';
+            const start = (currentVersionPage - 1) * versionsPerPage;
+            const end = Math.min(start + versionsPerPage, versions.length);
+            const pageVersions = versions.slice(start, end);
+            
+            pageVersions.forEach(v => {
+                let statusText = '草稿';
+                if (v.status === 'active') {
+                    statusText = '生效';
+                } else if (v.status === 'inactive') {
+                    statusText = '失效';
+                }
+                
+                html += `<div class="version-card" data-version="${v.id}">
+                    <div class="version-header">
+                        <span class="version-name">${v.name}</span>
+                        <span class="version-status ${v.status === 'active' ? 'active' : 'inactive'}" onclick="event.stopPropagation(); window.toggleVersionStatus('${v.id}')">${statusText}</span>
+                    </div>
+                    <div class="version-info">
+
+                        <div class="info-row">
+                            <span class="info-label">描述：</span>
+                            <div class="desc-container">
+                                <span class="desc-text" data-version-id="${v.id}" ondblclick="event.stopPropagation(); this.nextElementSibling.style.display = 'flex'; this.style.display = 'none';">${v.desc}</span>
+                                <div class="desc-edit" style="display: none;">
+                                    <input type="text" value="${v.desc}" class="desc-input">
+                                    <button class="save-desc-btn" data-version-id="${v.id}" onclick="event.stopPropagation(); window.saveVersionDesc(this.dataset.versionId, this.previousElementSibling.value)"><i class="fas fa-save"></i> 保存</button>
+                                    <button class="cancel-desc-btn" onclick="event.stopPropagation(); this.parentElement.style.display = 'none'; this.parentElement.previousElementSibling.style.display = 'block';"><i class="fas fa-times"></i> 取消</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rule-count">
+                            <i class="fas fa-list"></i>
+                            <span>规则数：${v.ruleCount}</span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            versionGrid.innerHTML = html;
+            // 重新绑定点击事件
+            bindVersionClicks();
+            // 更新分页按钮状态
+            updateVersionPagination();
+        }
+        
+        // 更新版本分页按钮状态
+        function updateVersionPagination() {
+            const prevBtn = document.getElementById('prevVersionBtn');
+            const nextBtn = document.getElementById('nextVersionBtn');
+            const totalPages = Math.ceil(versions.length / versionsPerPage);
+            
+            prevBtn.disabled = currentVersionPage === 1;
+            nextBtn.disabled = currentVersionPage === totalPages;
+        }
+        
+        // 版本分页事件
+        document.getElementById('prevVersionBtn').addEventListener('click', () => {
+            if (currentVersionPage > 1) {
+                currentVersionPage--;
+                renderVersions();
+            }
+        });
+        
+        document.getElementById('nextVersionBtn').addEventListener('click', () => {
+            const totalPages = Math.ceil(versions.length / versionsPerPage);
+            if (currentVersionPage < totalPages) {
+                currentVersionPage++;
+                renderVersions();
+            }
+        });
+
+        // 全局函数用于版本状态切换和日期保存
+        window.toggleVersionStatus = function(versionId) {
+            const version = versions.find(v => v.id === versionId);
+            if (version) {
+                const oldStatus = version.status;
+                version.status = version.status === 'active' ? 'draft' : 'active';
+                renderVersions();
+                // 添加日志
+                addLog({
+                    time: new Date().toISOString().slice(0,10) + ' ' + new Date().toTimeString().slice(0,8),
+                    version: versionId,
+                    versionId: versionId,
+                    user: '当前用户',
+                    ruleCode: '',
+                    ruleName: '',
+                    action: version.status === 'active' ? '启用' : '设为草稿',
+                    field: '版本状态',
+                    oldValue: oldStatus === 'active' ? '启用' : '草稿',
+                    newValue: version.status === 'active' ? '启用' : '草稿'
+                });
+                showToast(`版本 ${versionId} 已${version.status === 'active' ? '启用' : '设为草稿'}`);
+            }
+        };
+
+        // 显示描述编辑器
+        window.showDescEditor = function(versionId) {
+            console.log('showDescEditor called with versionId:', versionId);
+            const descEdit = document.getElementById(`desc_edit_${versionId}`);
+            console.log('descEdit element:', descEdit);
+            if (descEdit) {
+                const descText = descEdit.previousElementSibling;
+                console.log('descText element:', descText);
+                if (descText) {
+                    descText.style.display = 'none';
+                    descEdit.style.display = 'flex';
+                    console.log('Editor shown successfully');
+                }
+            }
+        };
+
+        // 取消描述编辑
+        window.cancelDescEdit = function(versionId) {
+            const descText = document.querySelector(`#desc_edit_${versionId}`).previousElementSibling;
+            const descEdit = document.getElementById(`desc_edit_${versionId}`);
+            // 恢复原始值
+            const descInput = document.getElementById(`desc_${versionId}`);
+            const version = versions.find(v => v.id === versionId);
+            if (version) {
+                descInput.value = version.desc;
+            }
+            descText.style.display = 'block';
+            descEdit.style.display = 'none';
+        };
+
+        // 保存版本描述
+        window.saveVersionDesc = function(versionId, newDesc) {
+            const version = versions.find(v => v.id === versionId);
+            if (version) {
+                const oldDesc = version.desc;
+                version.desc = newDesc;
+                
+                // 添加日志
+                addLog({
+                    time: new Date().toISOString().slice(0,10) + ' ' + new Date().toTimeString().slice(0,8),
+                    version: versionId,
+                    versionId: versionId,
+                    user: '当前用户',
+                    ruleCode: '',
+                    ruleName: '',
+                    action: '修改',
+                    field: '版本描述',
+                    oldValue: oldDesc,
+                    newValue: version.desc
+                });
+                
+                renderVersions();
+                showToast(`版本 ${versionId} 描述已更新`);
+            }
+        };
+
+
+
+
+
+        // 添加日志
+        function addLog(logItem) {
+            // 检查是否已有同时间、同用户、同版本的日志
+            const existingLogIndex = logData.findIndex(log => 
+                log.time === logItem.time && 
+                log.user === logItem.user && 
+                log.versionId === logItem.versionId
+            );
+            
+            if (existingLogIndex !== -1) {
+                // 如果存在，将新的变更添加到changes数组中
+                logData[existingLogIndex].changes.push({
+                    ruleCode: logItem.ruleCode,
+                    ruleName: logItem.ruleName,
+                    action: logItem.action,
+                    field: logItem.field,
+                    oldValue: logItem.oldValue,
+                    newValue: logItem.newValue
+                });
+            } else {
+                // 如果不存在，创建新的日志记录
+                logData.unshift({
+                    time: logItem.time,
+                    version: logItem.version,
+                    versionId: logItem.versionId,
+                    user: logItem.user,
+                    changes: [{
+                        ruleCode: logItem.ruleCode,
+                        ruleName: logItem.ruleName,
+                        action: logItem.action,
+                        field: logItem.field,
+                        oldValue: logItem.oldValue,
+                        newValue: logItem.newValue
+                    }]
+                });
+            }
+            renderLogs();
+        }
+
+        // 渲染日志
+        function renderLogs() {
+            const filterVersion = logVersionFilter.value;
+            const searchText = logSearch.value.toLowerCase();
+            
+            let filteredLogs = logData;
+            if (filterVersion) {
+                filteredLogs = filteredLogs.filter(log => log.version === filterVersion);
+            }
+            if (searchText) {
+                filteredLogs = filteredLogs.filter(log => 
+                    log.changes.some(change => 
+                        (change.ruleCode && change.ruleCode.toLowerCase().includes(searchText)) ||
+                        (change.ruleName && change.ruleName.toLowerCase().includes(searchText)) ||
+                        (change.action && change.action.toLowerCase().includes(searchText))
+                    )
+                );
+            }
+            
+            let html = '';
+            filteredLogs.forEach((log, logIndex) => {
+                // 渲染日志头部
+                html += `<div class="log-item">
+                    <span class="log-time"><i class="far fa-clock"></i> ${log.time}</span>
+                    <span class="log-version">${log.version}</span>
+                    <span class="log-user"><i class="far fa-user"></i> ${log.user}</span>
+                    <span class="log-change">`;
+                
+                // 渲染多条规则修改记录
+                log.changes.forEach((change, changeIndex) => {
+                    let changeText = '';
+                    if (change.ruleCode) {
+                        changeText = `【${change.ruleCode}】${change.ruleName} - ${change.action} ${change.field}`;
+                        if (change.oldValue || change.newValue) {
+                            changeText += `：从“${change.oldValue || '空'}”改为“${change.newValue || '空'}”`;
+                        }
+                    } else {
+                        if (change.field) {
+                            changeText = `${change.field}`;
+                            if (change.oldValue || change.newValue) {
+                                changeText += `：从“${change.oldValue || '空'}”改为“${change.newValue || '空'}”`;
+                            }
+                        } else {
+                            changeText = change.action + (change.newValue ? `：${change.newValue}` : '');
+                        }
+                    }
+                    
+                    if (changeIndex > 0) {
+                        html += '<br>';
+                    }
+                    html += changeText;
+                });
+                
+                // 渲染详情按钮（如果有规则代码）
+                const hasRuleCode = log.changes.some(change => change.ruleCode);
+                html += `</span>
+                    ${hasRuleCode ? `<span class="log-detail" onclick="window.showRuleDetail('${logIndex}')"><i class="fas fa-eye"></i> 详情</span>` : ''}
+                </div>`;
+            });
+            logList.innerHTML = html;
+        }
+
+        // 显示规则详情
+        window.showRuleDetail = function(index) {
+            const log = logData[index];
+            if (!log) return;
+            
+            // 取第一个有规则代码的变更记录来显示规则基本信息
+            const firstChange = log.changes.find(c => c.ruleCode);
+            if (!firstChange) return;
+            
+            const rule = enriched.find(r => r.code === firstChange.ruleCode);
+            
+            let html = `
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">版本编号：</span>
+                    <span class="rule-detail-value">${log.version}</span>
+                </div>
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">规则编码：</span>
+                    <span class="rule-detail-value">${rule ? rule.code : '—'}</span>
+                </div>
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">规则分类：</span>
+                    <span class="rule-detail-value">${rule ? rule.category : '—'}</span>
+                </div>
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">规则名称：</span>
+                    <span class="rule-detail-value">${rule ? rule.item : '—'}</span>
+                </div>
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">发票类型：</span>
+                    <span class="rule-detail-value">${rule ? (rule.invoiceType || '—') : '—'}</span>
+                </div>
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">规则内容：</span>
+                    <div class="rule-detail-value" style="background-color: #f9f9f9; padding: 8px; border-radius: 4px; border: 1px solid #e0e0e0;">${rule ? rule.content : '—'}</div>
+                </div>
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">结果处理：</span>
+                    <div class="rule-detail-value" style="background-color: #f9f9f9; padding: 8px; border-radius: 4px; border: 1px solid #e0e0e0;">${rule ? rule.result : '—'}</div>
+                </div>
+                <div class="rule-detail-item">
+                    <span class="rule-detail-label">修改记录：</span>
+                    <div class="rule-detail-value">
+            `;
+            
+            // 显示所有规则修改记录
+            log.changes.forEach((change, changeIndex) => {
+                html += `
+                        <div style="margin-bottom: 8px;">
+                            <div>操作：${change.action} ${change.field}</div>
+                            <div style="margin-top:4px; color:#2563eb;">修改前：${change.oldValue || '空'}</div>
+                            <div style="margin-top:4px; color:#0f7b4e;">修改后：${change.newValue || '空'}</div>
+                        </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            ruleDetailContent.innerHTML = html;
+            ruleDetailModal.classList.add('show');
+        };
+
+        // 关闭详情弹窗
+        closeDetailModal.addEventListener('click', () => {
+            ruleDetailModal.classList.remove('show');
+        });
+        closeDetailBtn.addEventListener('click', () => {
+            ruleDetailModal.classList.remove('show');
+        });
+
+        // 版本卡片点击事件
+        function bindVersionClicks() {
+            document.querySelectorAll('.version-card').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    if (e.target.closest('.version-status') || e.target.closest('input') || e.target.closest('button') || e.target.closest('.desc-container') || e.target.closest('.desc-text') || e.target.closest('.desc-edit')) {
+                        return;
+                    }
+                    const versionId = this.dataset.version;
+                    const version = versions.find(v => v.id === versionId);
+                    if (version) {
+                        currentVersion = version;
+                        currentVersionId = versionId;
+                        versionPage.classList.add('hidden');
+                        configPage.classList.remove('hidden');
+                        currentVersionDisplay.innerText = `当前版本: ${version.name} (${version.desc})`;
+                        renderLogs();
+                        showToast(`已切换到版本 ${version.name}`);
+                    }
+                });
+            });
+        }
+
+        // 生成新规则编码
+        function generateNewCode() {
+            const maxCode = Math.max(...enriched.map(r => parseInt(r.code.substring(1)) || 0));
+            return 'R' + String(maxCode + 1).padStart(3, '0');
+        }
+
+        // 添加新行
+        function addNewRow() {
+            const newCode = generateNewCode();
+            const tempId = 'new_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            newRows.push({
+                code: newCode,
+                category: '员工报销',
+                item: '',
+                invoiceType: '',
+                content: '',
+                allowSubmit: true,
+                result: '',
+                active: true,
+                tempId: tempId
+            });
+            isAddingNew = true;
+            renderTable();
+        }
+
+        // 删除新增行
+        function removeNewRow(tempId) {
+            newRows = newRows.filter(row => row.tempId !== tempId);
+            if (newRows.length === 0) {
+                isAddingNew = false;
+            }
+            renderTable();
+        }
+
+        // 更新新增行数据
+        function updateNewRow(tempId, field, value) {
+            const row = newRows.find(r => r.tempId === tempId);
+            if (row) {
+                row[field] = value;
+            }
+        }
+
+        // 确认单行新增 - 保存记录并弹出检查弹窗
+        function confirmNewRow(tempId) {
+            const row = newRows.find(r => r.tempId === tempId);
+            if (!row) return;
+            
+            // 验证必填字段
+            if (!row.item || !row.content) {
+                showToast('请填写规则名称和规则内容');
+                return;
+            }
+            
+            // 添加到数据源
+            const { tempId: id, ...newRule } = row;
+            enriched.push(newRule);
+            
+            // 从新增行数组中移除
+            newRows = newRows.filter(r => r.tempId !== tempId);
+            
+            // 更新过滤数据
+            filteredData = [...enriched];
+            
+            if (newRows.length === 0) {
+                isAddingNew = false;
+            }
+            
+            // 重新渲染表格
+            renderTable();
+            
+            // 弹出规则合理性检查弹窗
+            showCheckModal('新增');
+        }
+
+        // 取消单行新增
+        function cancelNewRow(tempId) {
+            newRows = newRows.filter(row => row.tempId !== tempId);
+            if (newRows.length === 0) {
+                isAddingNew = false;
+            }
+            renderTable();
+        }
+
+        // 渲染表格 - 支持多行新增
+        function renderTable() {
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, filteredData.length);
+            const pageData = filteredData.slice(start, end);
+
+            let html = '';
+            
+            // 如果正在新增行，且在第一页，显示新增行（在表格最前面）
+            if (isAddingNew && currentPage === 1) {
+                newRows.forEach((row, idx) => {
+                    const tempId = row.tempId;
+                    html += `<tr class="new-row" id="new-row-${tempId}">
+                        <td><input type="checkbox" disabled></td>
+                        <td><span class="code-tag">${row.code}</span></td>
+                        <td>
+                            <select class="inline-edit-select" onchange="window.updateNewRow('${tempId}', 'category', this.value)">
+                                <option value="出差申请" ${row.category === '出差申请' ? 'selected' : ''}>出差申请</option>
+                                <option value="差旅报销" ${row.category === '差旅报销' ? 'selected' : ''}>差旅报销</option>
+                                <option value="员工报销" ${row.category === '员工报销' ? 'selected' : ''}>员工报销</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="inline-edit-input" value="${row.item}" placeholder="请输入规则名称" onchange="window.updateNewRow('${tempId}', 'item', this.value)"></td>
+                        <td><input type="text" class="inline-edit-input" value="${row.invoiceType}" placeholder="请输入发票类型" onchange="window.updateNewRow('${tempId}', 'invoiceType', this.value)"></td>
+                        <td><textarea class="inline-edit-textarea" rows="2" placeholder="请输入规则内容" onchange="window.updateNewRow('${tempId}', 'content', this.value)">${row.content}</textarea></td>
+                        <td>
+                            <select class="inline-edit-select" onchange="window.updateNewRow('${tempId}', 'allowSubmit', this.value === 'false')">
+                                <option value="false" ${row.allowSubmit ? 'selected' : ''}>否</option>
+                                <option value="true" ${!row.allowSubmit ? 'selected' : ''}>是</option>
+                            </select>
+                        </td>
+                        <td><textarea class="inline-edit-textarea" rows="2" placeholder="请输入结果处理" onchange="window.updateNewRow('${tempId}', 'result', this.value)">${row.result}</textarea></td>
+                        <td class="edit-actions">
+                            <i class="fas fa-check-circle" onclick="window.confirmNewRow('${tempId}')" title="确认"></i>
+                            <i class="fas fa-times-circle" onclick="window.cancelNewRow('${tempId}')" title="取消"></i>
+                        </td>
+                    </tr>`;
+                });
+            }
+            
+            pageData.forEach((r, idx) => {
+                const globalIndex = start + idx;
+                const statusClass = r.active ? 'active' : '';
+                const shortContent = r.content.length > 40 ? r.content.substring(0,38)+'…' : r.content;
+                const shortResult = r.result.length > 40 ? r.result.substring(0,38)+'…' : r.result;
+                
+                if (editingRowIndex === globalIndex) {
+                    html += `<tr class="editing-row" data-global-index="${globalIndex}">
+                        <td><input type="checkbox" class="rowCheckbox"></td>
+                        <td><span class="code-tag">${r.code}</span></td>
+                        <td>
+                            <select class="inline-edit-select" id="edit_category_${globalIndex}">
+                                <option value="出差申请" ${r.category === '出差申请' ? 'selected' : ''}>出差申请</option>
+                                <option value="差旅报销" ${r.category === '差旅报销' ? 'selected' : ''}>差旅报销</option>
+                                <option value="员工报销" ${r.category === '员工报销' ? 'selected' : ''}>员工报销</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="inline-edit-input" id="edit_item_${globalIndex}" value="${r.item.replace(/"/g, '&quot;')}"></td>
+                        <td><input type="text" class="inline-edit-input" id="edit_invoice_${globalIndex}" value="${r.invoiceType.replace(/"/g, '&quot;')}"></td>
+                        <td><textarea class="inline-edit-textarea" id="edit_content_${globalIndex}" rows="2">${r.content.replace(/"/g, '&quot;')}</textarea></td>
+                        <td>
+                            <select class="inline-edit-select" id="edit_allowSubmit_${globalIndex}">
+                                <option value="false" ${r.allowSubmit ? 'selected' : ''}>否</option>
+                                <option value="true" ${!r.allowSubmit ? 'selected' : ''}>是</option>
+                            </select>
+                        </td>
+                        <td><textarea class="inline-edit-textarea" id="edit_result_${globalIndex}" rows="2">${r.result.replace(/"/g, '&quot;')}</textarea></td>
+                        <td class="edit-actions">
+                            <i class="fas fa-check-circle" data-action="save-edit" data-index="${globalIndex}" title="保存"></i>
+                            <i class="fas fa-times-circle" data-action="cancel-edit" data-index="${globalIndex}" title="取消"></i>
+                        </td>
+                    </tr>`;
+                } else {
+                    html += `<tr data-global-index="${globalIndex}">
+                        <td><input type="checkbox" class="rowCheckbox"></td>
+                        <td><span class="code-tag">${r.code}</span></td>
+                        <td><span class="rule-badge">${r.category}</span></td>
+                        <td><strong>${r.item}</strong></td>
+                        <td>${r.invoiceType}</td>
+                        <td>${shortContent}</td>
+                        <td><span class="rule-badge">${!r.allowSubmit ? '是' : '否'}</span></td>
+                        <td>${shortResult}</td>
+                        <td class="action-icons">
+                            <i class="fas fa-pen" data-action="edit" data-index="${globalIndex}" data-code="${r.code}" title="编辑"></i>
+                            <i class="fas fa-trash-alt" data-action="delete" data-code="${r.code}" title="删除"></i>
+                        </td>
+                    </tr>`;
+                }
+            });
+            tbody.innerHTML = html;
+
+            startSpan.innerText = filteredData.length ? start + 1 : 0;
+            endSpan.innerText = end;
+            totalSpan.innerText = filteredData.length;
+
+            updatePaginationControls();
+        }
+
+        // 将更新函数挂载到window对象上，供内联事件调用
+        window.updateNewRow = updateNewRow;
+        window.confirmNewRow = confirmNewRow;
+        window.cancelNewRow = cancelNewRow;
+
+        // 渲染分页数字
+        function renderPageNumbers() {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            let html = '';
+            
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+            }
+            pageNumbers.innerHTML = html;
+
+            document.querySelectorAll('#pageNumbers .pagination-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentPage = parseInt(btn.dataset.page);
+                    renderTable();
+                });
+            });
+        }
+
+        function updatePaginationControls() {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            firstBtn.disabled = currentPage === 1;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+            lastBtn.disabled = currentPage === totalPages || totalPages === 0;
+            renderPageNumbers();
+        }
+
+        // 初始渲染
+        renderVersions();
+        renderLogs();
+        renderTable();
+
+        // 日志筛选事件
+        logVersionFilter.addEventListener('change', renderLogs);
+        logSearch.addEventListener('input', renderLogs);
+
+        // 版本状态切换函数 - 确保只能启用一个版本
+        window.toggleVersionStatus = function(versionId) {
+            const version = versions.find(v => v.id === versionId);
+            if (!version) return;
+
+            // 如果当前版本已经是启用状态，则设为失效
+            if (version.status === 'active') {
+                version.status = 'inactive';
+                showToast('版本已设为失效');
+            } else {
+                // 如果要启用当前版本，先将所有其他版本设为失效
+                versions.forEach(v => {
+                    if (v.id !== versionId) {
+                        v.status = 'inactive';
+                    }
+                });
+                // 启用当前版本
+                version.status = 'active';
+                showToast('版本已生效，其他版本已自动设为失效');
+            }
+
+            // 重新渲染版本卡片
+            renderVersions();
+        };
+
+        // 返回按钮事件
+        backBtn.addEventListener('click', () => {
+            configPage.classList.add('hidden');
+            versionPage.classList.remove('hidden');
+            // 如果正在新增，取消新增状态
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+                renderTable();
+            }
+            showToast('返回版本管理');
+        });
+
+        // 导入下拉菜单
+        importBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            importDropdownContent.classList.toggle('show');
+        });
+
+        // 点击其他地方关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            if (!importDropdown.contains(e.target)) {
+                importDropdownContent.classList.remove('show');
+            }
+        });
+
+        // 下载模板 - 直接下载
+        function downloadTemplate() {
+            let templateText = templateHeaders.join('\t') + '\n';
+            templateData.forEach(row => {
+                templateText += row.join('\t') + '\n';
+            });
+            
+            const blob = new Blob([templateText], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '规则配置导入模板.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            showToast('模板下载成功');
+        }
+
+        downloadTemplateBtn.addEventListener('click', () => {
+            importDropdownContent.classList.remove('show');
+            downloadTemplate();
+        });
+
+        // 导入文件
+        importFileBtn.addEventListener('click', () => {
+            importDropdownContent.classList.remove('show');
+            importModal.classList.add('show');
+        });
+
+        closeImportModal.addEventListener('click', () => {
+            importModal.classList.remove('show');
+        });
+
+        cancelImportBtn.addEventListener('click', () => {
+            importModal.classList.remove('show');
+        });
+
+        selectFileBtn.addEventListener('click', () => {
+            showToast('演示：导入表格成功，正在进行规则合理性检查');
+            importModal.classList.remove('show');
+            setTimeout(() => {
+                showCheckModal('导入');
+            }, 300);
+        });
+
+        // 新增规则按钮
+        newRuleBtn.addEventListener('click', () => {
+            // 如果已经有编辑中的行，先退出
+            if (editingRowIndex !== -1) {
+                editingRowIndex = -1;
+            }
+            // 切换到第一页
+            currentPage = 1;
+            addNewRow();
+        });
+
+        // 一键复制按钮
+        const saveAsNewVersionBtn = document.getElementById('saveAsNewVersionBtn');
+        saveAsNewVersionBtn.addEventListener('click', () => {
+            // 生成新的版本号
+            const versionNumbers = versions.map(v => {
+                const match = v.id.match(/v(\d+)\.(\d+)\.(\d+)/);
+                if (match) {
+                    return {
+                        major: parseInt(match[1]),
+                        minor: parseInt(match[2]),
+                        patch: parseInt(match[3]),
+                        id: v.id
+                    };
+                }
+                return null;
+            }).filter(Boolean).sort((a, b) => {
+                if (a.major !== b.major) return b.major - a.major;
+                if (a.minor !== b.minor) return b.minor - a.minor;
+                return b.patch - a.patch;
+            });
+            
+            const latestVersion = versionNumbers[0];
+            let newVersionId;
+            if (latestVersion) {
+                newVersionId = `v${latestVersion.major}.${latestVersion.minor + 1}.0`;
+            } else {
+                newVersionId = 'v1.0.0';
+            }
+            
+            // 创建新版本
+            const newVersion = {
+                id: newVersionId,
+                name: newVersionId,
+                group: currentVersion.group,
+                desc: `${currentVersion.desc} - 新版本`,
+                status: 'draft',
+                ruleCount: currentVersion.ruleCount,
+                activeCount: currentVersion.activeCount,
+                inactiveCount: currentVersion.inactiveCount
+            };
+            
+            // 添加到版本列表
+            versions.push(newVersion);
+            
+            // 重新渲染版本列表
+            renderVersions();
+            
+            // 显示成功提示
+            showToast(`已创建新版本 ${newVersionId}`);
+        });
+
+        // 规则合理性检查弹窗
+        function showCheckModal(action) {
+            const checkResults = [
+                {
+                    status: 'pass',
+                    title: '规则完整性检查',
+                    desc: action === '新增' ? '新增规则包含规则内容、结果处理等必要字段，符合规范要求。' : '导入的规则均包含规则内容、结果处理等必要字段，符合规范要求。',
+                    suggestion: ''
+                },
+                {
+                    status: 'warn',
+                    title: '规则冲突检测',
+                    desc: action === '新增' ? '检测到新规则与现有规则可能存在潜在冲突。' : '检测到导入规则与现有规则存在潜在冲突。',
+                    suggestion: '建议检查规则适用范围，避免审核逻辑重复。'
+                },
+                {
+                    status: 'warn',
+                    title: '结果处理完整性',
+                    desc: action === '新增' ? '新规则的结果处理内容可以进一步细化。' : '部分导入规则的结果处理内容过于简单，可能影响用户体验。',
+                    suggestion: '建议为规则补充更详细的结果处理说明，增加具体操作指引。'
+                }
+            ];
+
+            let html = '';
+            checkResults.forEach(item => {
+                let icon = '';
+                if (item.status === 'pass') {
+                    icon = '<i class="fas fa-check-circle"></i>';
+                } else if (item.status === 'warn') {
+                    icon = '<i class="fas fa-exclamation-triangle"></i>';
+                } else {
+                    icon = '<i class="fas fa-times-circle"></i>';
+                }
+                
+                html += `<div class="check-item">
+                    <div class="status-icon ${item.status}">${icon}</div>
+                    <div class="check-detail">
+                        <div class="check-title">${item.title}</div>
+                        <div class="check-desc">${item.desc}</div>
+                        ${item.suggestion ? `<div class="check-suggestion"><i class="fas fa-lightbulb"></i> ${item.suggestion}</div>` : ''}
+                    </div>
+                </div>`;
+            });
+            
+            modalCheckResult.innerHTML = html;
+            checkModal.classList.add('show');
+        }
+
+        function closeCheckModal() {
+            checkModal.classList.remove('show');
+        }
+
+        editRuleBtn.addEventListener('click', () => {
+            showToast('请点击表格中的编辑图标进行编辑');
+        });
+
+        closeModal.addEventListener('click', closeCheckModal);
+        modalCancel.addEventListener('click', closeCheckModal);
+        modalConfirm.addEventListener('click', () => {
+            closeCheckModal();
+            showToast('操作已继续');
+        });
+
+        checkModal.addEventListener('click', (e) => {
+            if (e.target === checkModal) closeCheckModal();
+        });
+
+        // toast
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastText').innerText = text;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // 保存编辑
+        function saveEdit(index) {
+            const rule = filteredData[index];
+            if (!rule) return;
+            
+            const oldRule = {...rule};
+            
+            rule.category = document.getElementById(`edit_category_${index}`).value;
+            rule.item = document.getElementById(`edit_item_${index}`).value;
+            rule.invoiceType = document.getElementById(`edit_invoice_${index}`).value;
+            rule.content = document.getElementById(`edit_content_${index}`).value;
+            rule.allowSubmit = document.getElementById(`edit_allowSubmit_${index}`).value === 'false';
+            rule.result = document.getElementById(`edit_result_${index}`).value;
+            
+            addLog({
+                time: new Date().toISOString().slice(0,10) + ' ' + new Date().toTimeString().slice(0,8),
+                version: currentVersion ? currentVersion.id : 'v1.2.0',
+                versionId: currentVersion ? currentVersion.id : 'v1.2.0',
+                user: '当前用户',
+                ruleCode: rule.code,
+                ruleName: rule.item,
+                action: '修改',
+                field: '规则内容',
+                oldValue: oldRule.content,
+                newValue: rule.content
+            });
+            
+            editingRowIndex = -1;
+            renderTable();
+            showToast('规则已更新');
+        }
+
+        function cancelEdit() {
+            editingRowIndex = -1;
+            renderTable();
+            showToast('已取消编辑');
+        }
+
+        // 事件委托处理表格操作
+        document.getElementById('tableBody').addEventListener('click', (e) => {
+            const target = e.target;
+            
+            // 处理编辑图标点击
+            if (target.classList.contains('fa-pen') || target.closest('.fa-pen')) {
+                const editIcon = target.classList.contains('fa-pen') ? target : target.closest('.fa-pen');
+                const index = editIcon.dataset.index;
+                if (index !== undefined) {
+                    // 如果正在新增，先退出新增模式
+                    if (isAddingNew) {
+                        newRows = [];
+                        isAddingNew = false;
+                    }
+                    editingRowIndex = parseInt(index);
+                    renderTable();
+                    showToast('进入编辑模式');
+                    return;
+                }
+            }
+            
+            // 处理删除图标点击
+            if (target.classList.contains('fa-trash-alt') || target.closest('.fa-trash-alt')) {
+                const deleteIcon = target.classList.contains('fa-trash-alt') ? target : target.closest('.fa-trash-alt');
+                const code = deleteIcon.dataset.code;
+                if (code) {
+                    const rule = enriched.find(r => r.code === code);
+                    if (!rule) return;
+                    if (confirm(`确定删除规则“${rule.item}”?`)) {
+                        const idx = enriched.findIndex(r => r.code === code);
+                        if (idx !== -1) {
+                            enriched.splice(idx, 1);
+                            filteredData = [...enriched];
+                            if (filteredData.length > 0 && (currentPage - 1) * pageSize >= filteredData.length) {
+                                currentPage = Math.max(1, Math.ceil(filteredData.length / pageSize));
+                            }
+                            
+                            addLog({
+                                time: new Date().toISOString().slice(0,10) + ' ' + new Date().toTimeString().slice(0,8),
+                                version: currentVersion ? currentVersion.id : 'v1.2.0',
+                                versionId: currentVersion ? currentVersion.id : 'v1.2.0',
+                                user: '当前用户',
+                                ruleCode: rule.code,
+                                ruleName: rule.item,
+                                action: '删除',
+                                field: '',
+                                oldValue: '',
+                                newValue: ''
+                            });
+                            
+                            renderTable();
+                            showToast('已删除');
+                        }
+                    }
+                    return;
+                }
+            }
+            
+            // 处理保存编辑点击
+            if (target.classList.contains('fa-check-circle') || target.closest('.fa-check-circle')) {
+                const saveIcon = target.classList.contains('fa-check-circle') ? target : target.closest('.fa-check-circle');
+                const index = saveIcon.dataset.index;
+                if (index !== undefined) {
+                    saveEdit(parseInt(index));
+                    return;
+                }
+            }
+            
+            // 处理取消编辑点击
+            if (target.classList.contains('fa-times-circle') || target.closest('.fa-times-circle')) {
+                cancelEdit();
+                return;
+            }
+        });
+
+        // AI按钮
+        document.getElementById('aiBtn').addEventListener('click', ()=>{
+            const val = document.getElementById('aiInput').value.trim();
+            showToast(val ? `AI配置: “${val}”` : '请输入自然语言指令');
+        });
+
+        // 查询按钮
+        document.getElementById('queryBtn').addEventListener('click', ()=>{
+            if (editingRowIndex !== -1) editingRowIndex = -1;
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+            }
+            
+            const code = document.getElementById('queryCode').value.toLowerCase();
+            const category = document.getElementById('queryCategory').value;
+            const item = document.getElementById('queryItem').value.toLowerCase();
+            const invoice = document.getElementById('queryInvoice').value.toLowerCase();
+            const content = document.getElementById('queryContent').value.toLowerCase();
+            const allowSubmit = document.getElementById('queryAllowSubmit').value;
+            const result = document.getElementById('queryResult').value.toLowerCase();
+
+            filteredData = enriched.filter(r => {
+                if (code && !r.code.toLowerCase().includes(code)) return false;
+                if (category && r.category !== category) return false;
+                if (item && !r.item.toLowerCase().includes(item)) return false;
+                if (invoice && !r.invoiceType.toLowerCase().includes(invoice)) return false;
+                if (content && !r.content.toLowerCase().includes(content)) return false;
+                if (allowSubmit && String(!r.allowSubmit) !== allowSubmit) return false;
+                if (result && !r.result.toLowerCase().includes(result)) return false;
+                return true;
+            });
+
+            currentPage = 1;
+            renderTable();
+            showToast(`查询到 ${filteredData.length} 条结果`);
+        });
+
+        // 重置按钮
+        document.getElementById('resetBtn').addEventListener('click', ()=>{
+            if (editingRowIndex !== -1) editingRowIndex = -1;
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+            }
+            
+            document.getElementById('queryCode').value = '';
+            document.getElementById('queryCategory').value = '';
+            document.getElementById('queryItem').value = '';
+            document.getElementById('queryInvoice').value = '';
+            document.getElementById('queryContent').value = '';
+            document.getElementById('queryAllowSubmit').value = '';
+            document.getElementById('queryResult').value = '';
+            
+            filteredData = [...enriched];
+            currentPage = 1;
+            renderTable();
+            showToast('已重置查询条件');
+        });
+
+        // 分页事件
+        firstBtn.addEventListener('click', () => {
+            if (editingRowIndex !== -1) editingRowIndex = -1;
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+            }
+            currentPage = 1;
+            renderTable();
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (editingRowIndex !== -1) editingRowIndex = -1;
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+            }
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (editingRowIndex !== -1) editingRowIndex = -1;
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+            }
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        });
+
+        lastBtn.addEventListener('click', () => {
+            if (editingRowIndex !== -1) editingRowIndex = -1;
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+            }
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            currentPage = totalPages;
+            renderTable();
+        });
+
+        pageSizeSelect.addEventListener('change', (e) => {
+            if (isAddingNew) {
+                newRows = [];
+                isAddingNew = false;
+            }
+            pageSize = parseInt(e.target.value);
+            currentPage = 1;
+            renderTable();
+        });
+
+        // 全选
+        document.querySelector('thead input[type="checkbox"]')?.addEventListener('change', (e)=>{
+            document.querySelectorAll('.rowCheckbox').forEach(cb => cb.checked = e.target.checked);
+        });
+
+        // 返回首页按钮点击事件 - 使用全局函数
+        window.goToHome = function() {
+            console.log('返回首页函数被调用');
+            // 直接跳转到首页
+            window.location.href = 'file:///C:/Users/EDY/Downloads/AI智能报销系统/index.html';
+        };
+
+        // 为返回首页按钮添加点击事件
+        if (homeBackBtn) {
+            console.log('返回首页按钮已找到:', homeBackBtn);
+            // 使用onclick属性直接绑定
+            homeBackBtn.onclick = window.goToHome;
+            // 同时添加addEventListener作为备份
+            homeBackBtn.addEventListener('click', window.goToHome);
+        } else {
+            console.log('返回首页按钮未找到');
+        }
+
+        // 语音输入弹窗功能
+        console.log('开始初始化语音输入弹窗');
+        
+        // 获取元素
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceModal = document.getElementById('voiceModal');
+        
+        console.log('语音按钮元素:', voiceBtn);
+        console.log('语音弹窗元素:', voiceModal);
+        
+        // 打开语音输入弹窗
+        if (voiceBtn && voiceModal) {
+            console.log('语音按钮和弹窗已找到，添加点击事件');
+            
+            // 点击语音按钮
+            voiceBtn.addEventListener('click', function() {
+                console.log('语音按钮被点击');
+                voiceModal.style.display = 'block';
+                console.log('语音弹窗已显示');
+            });
+            
+            // 点击关闭按钮
+            const voiceClose = voiceModal.querySelector('.voice-close');
+            if (voiceClose) {
+                voiceClose.addEventListener('click', function() {
+                    voiceModal.style.display = 'none';
+                });
+            }
+            
+            // 点击取消按钮
+            const voiceCancelBtn = document.getElementById('voiceCancelBtn');
+            if (voiceCancelBtn) {
+                voiceCancelBtn.addEventListener('click', function() {
+                    voiceModal.style.display = 'none';
+                });
+            }
+            
+            // 点击确认录入按钮
+            const voiceConfirmBtn = document.getElementById('voiceConfirmBtn');
+            if (voiceConfirmBtn) {
+                voiceConfirmBtn.addEventListener('click', function() {
+                    showToast('语音录入成功');
+                    voiceModal.style.display = 'none';
+                });
+            }
+            
+            // 点击弹窗外部关闭
+            window.addEventListener('click', function(event) {
+                if (event.target === voiceModal) {
+                    voiceModal.style.display = 'none';
+                }
+            });
+        } else {
+            console.log('语音按钮或弹窗未找到');
+        }
+    })();
+
+    // 全局函数，用于显示语音输入弹窗
+    window.showVoiceModal = function() {
+        console.log('showVoiceModal函数被调用');
+        const voiceModal = document.getElementById('voiceModal');
+        if (voiceModal) {
+            console.log('找到语音弹窗，显示它');
+            voiceModal.style.display = 'block';
+        } else {
+            console.log('未找到语音弹窗');
+        }
+    };
+
+    // 全局函数，用于关闭语音输入弹窗
+    window.closeVoiceModal = function() {
+        const voiceModal = document.getElementById('voiceModal');
+        if (voiceModal) {
+            voiceModal.style.display = 'none';
+        }
+    };
+</script>
+
+<!-- 语音输入弹窗 -->
+<div id="voiceModal" class="voice-modal" style="display: none;">
+    <div class="voice-modal-content">
+        <div class="voice-modal-header">
+            <h3>语音输入</h3>
+            <span class="voice-close" onclick="document.getElementById('voiceModal').style.display='none';">&times;</span>
+        </div>
+        <div class="voice-modal-body">
+            <div class="voice-template-section">
+                <h4>标准化话术模板：</h4>
+                <div class="voice-template-content">
+                    我需要进行规则配置，规则类型为：...，规则名称/费用项目为：...，发票类型为：...，规则内容为：...，是否禁止提交为：...，结果处理为：...
+                </div>
+            </div>
+            <div class="voice-input-section">
+                <div class="voice-mic-icon">
+                    <i class="fas fa-microphone"></i>
+                </div>
+                <p>点击麦克风开始语音输入</p>
+            </div>
+            <div class="voice-result-section">
+                <div class="voice-result-content">
+                    我需要进行规则配置，规则类型为：...，规则名称/费用项目为：...，发票类型为：...，规则内容为：...，是否禁止提交为：...，结果处理为：...
+                </div>
+            </div>
+        </div>
+        <div class="voice-modal-footer">
+            <button class="voice-modal-btn voice-modal-btn-secondary" id="voiceCancelBtn" onclick="document.getElementById('voiceModal').style.display='none';">取消</button>
+            <button class="voice-modal-btn" id="voiceConfirmBtn" onclick="document.getElementById('voiceModal').style.display='none'; showToast('语音录入成功');">确认录入</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 语音输入弹窗样式 */
+    .voice-modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.5);
+    }
+    .voice-modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .voice-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .voice-modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+    .voice-close {
+        font-size: 20px;
+        font-weight: bold;
+        color: #999;
+        cursor: pointer;
+    }
+    .voice-close:hover {
+        color: #333;
+    }
+    .voice-template-section {
+        margin-bottom: 20px;
+    }
+    .voice-template-section h4 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+    }
+    .voice-template-content {
+        background-color: #f9f9f9;
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #333;
+    }
+    .voice-input-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .voice-mic-icon {
+        width: 60px;
+        height: 60px;
+        background-color: #8B1450;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+    .voice-mic-icon i {
+        font-size: 24px;
+        color: #fff;
+    }
+    .voice-input-section p {
+        margin: 0;
+        font-size: 14px;
+        color: #666;
+    }
+    .voice-result-section {
+        margin-bottom: 20px;
+    }
+    .voice-result-content {
+        background-color: #f9f9f9;
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #333;
+        min-height: 80px;
+    }
+    .voice-modal-footer {
+        display: flex;
+        justify-content: space-between;
+    }
+    .voice-modal-btn {
+        padding: 10px 0;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 48%;
+    }
+    .voice-modal-btn {
+        background-color: #8B1450;
+        color: #fff;
+    }
+    .voice-modal-btn:hover {
+        background-color: #7a1245;
+    }
+    .voice-modal-btn-secondary {
+        background-color: #fff;
+        color: #8B1450;
+        border: 1px solid #8B1450;
+    }
+    .voice-modal-btn-secondary:hover {
+        background-color: #f8f0f4;
+    }
+</style>
+
+<!-- 说明：彻底修复了新增规则点击确认和取消按钮无反应的问题。现在点击确认按钮会保存记录并弹出规则合理性检查弹窗，点击取消按钮会取消新增。所有按钮都能正常工作。 -->
+</body>
+</html>
