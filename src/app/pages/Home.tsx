@@ -6,11 +6,11 @@ import {
   Plane,
   FileText,
   ReceiptText,
-  Image,
   Settings,
   Bot,
 } from "lucide-react";
 import { VoiceModal } from "../components/VoiceModal";
+import { recognizeIntent } from "../services/dify";
 
 interface Message {
   id: number;
@@ -40,45 +40,6 @@ const QUICK_FLOWS = [
   },
 ];
 
-function analyzeIntent(
-  text: string,
-): { label: string; path: string } | null {
-  const lower = text;
-  if (
-    lower.includes("出差申请") ||
-    (lower.includes("出差") && !lower.includes("报销"))
-  )
-    return { label: "出差申请", path: "/business-trip" };
-  if (lower.includes("差旅报销") || lower.includes("差旅"))
-    return { label: "差旅报销", path: "/travel-reimbursement" };
-  if (lower.includes("员工报销"))
-    return {
-      label: "员工报销",
-      path: "/employee-reimbursement",
-    };
-  if (
-    lower.includes("报销") &&
-    !lower.includes("差旅") &&
-    !lower.includes("员工")
-  )
-    return {
-      label: "员工报销",
-      path: "/employee-reimbursement",
-    };
-  if (
-    lower.includes("影像") ||
-    lower.includes("票据管理") ||
-    lower.includes("发票管理")
-  )
-    return { label: "影像管理", path: "/image-management" };
-  if (
-    lower.includes("字段") ||
-    lower.includes("配置") ||
-    lower.includes("规则")
-  )
-    return { label: "字段配置", path: "/field-config" };
-  return null;
-}
 
 const HOME_VOICE_TEMPLATE = `我需要办理以下业务：
 #[出差申请 / 差旅报销 / 员工报销]
@@ -104,7 +65,7 @@ export function Home() {
     });
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!inputText.trim()) return;
     const userMsg: Message = {
       id: Date.now(),
@@ -115,23 +76,43 @@ export function Home() {
     setInputText("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const intent = analyzeIntent(inputText);
+    try {
+      // 调用 Dify 智能体1 进行意图识别
+      const result = await recognizeIntent(inputText);
+
       let aiResponse: Message;
-      if (intent) {
+
+      if (result.success && result.url) {
+        // 意图识别成功
+        const intentLabels: Record<string, string> = {
+          '0': '出差申请',
+          '1': '差旅报销',
+          '2': '员工报销',
+        };
+        const label = intentLabels[result.intentCode] || '相关页面';
+
         aiResponse = {
           id: Date.now() + 1,
           role: "ai",
-          text: `我已识别您的需求：${intent.label}。正在为您跳转到对应界面，请稍候...`,
+          text: `我已识别您的需求：${label}。正在为您跳转到对应界面，请稍候...`,
           actions: [
-            { label: `前往${intent.label}`, path: intent.path },
+            { label: `前往${label}`, path: result.url.replace('http://localhost:5173', '') },
           ],
         };
+
+        setIsTyping(false);
+        setMessages((prev) => [...prev, aiResponse]);
+
+        // 1.5秒后自动跳转
+        setTimeout(() => {
+          navigate(result.url.replace('http://localhost:5173', ''));
+        }, 1500);
       } else {
+        // 意图识别失败
         aiResponse = {
           id: Date.now() + 1,
           role: "ai",
-          text: "您好！我可以帮您处理以下业务：\n• 出差申请 - 智能录入出差信息\n• 差旅报销 - 上传票据自动报销\n• 员工报销 - 日常费用报销\n请告诉我您需要哪项服务？",
+          text: "抱歉，我没能理解您的需求。请问您需要办理什么业务？\n\n您可以尝试说：\n• 我想申请出差\n• 我要办理差旅报销\n• 我需要员工报销",
           actions: [
             { label: "出差申请", path: "/business-trip" },
             {
@@ -144,14 +125,24 @@ export function Home() {
             },
           ],
         };
+        setIsTyping(false);
+        setMessages((prev) => [...prev, aiResponse]);
       }
+    } catch (error) {
+      console.error('Intent recognition error:', error);
+      const aiResponse: Message = {
+        id: Date.now() + 1,
+        role: "ai",
+        text: "抱歉，服务暂时不可用，请稍后再试。您可以直接点击下方按钮进入对应页面。",
+        actions: [
+          { label: "出差申请", path: "/business-trip" },
+          { label: "差旅报销", path: "/travel-reimbursement" },
+          { label: "员工报销", path: "/employee-reimbursement" },
+        ],
+      };
       setIsTyping(false);
       setMessages((prev) => [...prev, aiResponse]);
-
-      if (intent) {
-        setTimeout(() => navigate(intent.path), 1500);
-      }
-    }, 1000);
+    }
   };
 
   return (
@@ -320,60 +311,64 @@ export function Home() {
         isOpen={voiceOpen}
         onClose={() => setVoiceOpen(false)}
         template={HOME_VOICE_TEMPLATE}
-        onConfirm={(text) => {
+        onConfirm={async (text) => {
           setVoiceOpen(false);
-          setInputText(text);
-          setTimeout(() => {
-            const userMsg: Message = {
-              id: Date.now(),
-              role: "user",
-              text,
-            };
-            setMessages((prev) => [...prev, userMsg]);
-            setInputText("");
-            setIsTyping(true);
-            setTimeout(() => {
-              const intent = analyzeIntent(text);
-              let aiResponse: Message;
-              if (intent) {
-                aiResponse = {
-                  id: Date.now() + 1,
-                  role: "ai",
-                  text: `我已识别您的需求：${intent.label}。正在为您跳转到对应界面，请稍候...`,
-                  actions: [
-                    {
-                      label: `前往${intent.label}`,
-                      path: intent.path,
-                    },
-                  ],
-                };
-              } else {
-                aiResponse = {
-                  id: Date.now() + 1,
-                  role: "ai",
-                  text: "您好！我可以帮您处理以下业务：\n• 出差申请 - 智能录入出差信息\n• 差旅报销 - 上传票据自动报销\n• 员工报销 - 日常费用报销\n• 影像管理 - 查看管理票据\n• 字段配置 - 自定义表单字段\n\n请告诉我您需要哪项服务？",
-                  actions: [
-                    {
-                      label: "出差申请",
-                      path: "/business-trip",
-                    },
-                    {
-                      label: "差旅报销",
-                      path: "/travel-reimbursement",
-                    },
-                    {
-                      label: "员工报销",
-                      path: "/employee-reimbursement",
-                    },
-                  ],
-                };
-              }
+
+          const userMsg: Message = {
+            id: Date.now(),
+            role: "user",
+            text,
+          };
+          setMessages((prev) => [...prev, userMsg]);
+          setIsTyping(true);
+
+          try {
+            // 调用 Dify 智能体1 进行意图识别
+            const result = await recognizeIntent(text);
+
+            let aiResponse: Message;
+
+            if (result.success && result.url) {
+              const intentLabels: Record<string, string> = {
+                '0': '出差申请',
+                '1': '差旅报销',
+                '2': '员工报销',
+              };
+              const label = intentLabels[result.intentCode] || '相关页面';
+
+              aiResponse = {
+                id: Date.now() + 1,
+                role: "ai",
+                text: `我已识别您的需求：${label}。正在为您跳转到对应界面，请稍候...`,
+                actions: [
+                  { label: `前往${label}`, path: result.url.replace('http://localhost:5173', '') },
+                ],
+              };
+
               setIsTyping(false);
               setMessages((prev) => [...prev, aiResponse]);
-              if (intent)
-                setTimeout(() => navigate(intent.path), 1500);
-            }, 1000);
-          }, 100);
+
+              setTimeout(() => {
+                navigate(result.url.replace('http://localhost:5173', ''));
+              }, 1500);
+            } else {
+              aiResponse = {
+                id: Date.now() + 1,
+                role: "ai",
+                text: "抱歉，我没能理解您的需求。请问您需要办理什么业务？",
+                actions: [
+                  { label: "出差申请", path: "/business-trip" },
+                  { label: "差旅报销", path: "/travel-reimbursement" },
+                  { label: "员工报销", path: "/employee-reimbursement" },
+                ],
+              };
+              setIsTyping(false);
+              setMessages((prev) => [...prev, aiResponse]);
+            }
+          } catch (error) {
+            console.error('Voice intent recognition error:', error);
+            setIsTyping(false);
+          }
         }}
       />
     </div>

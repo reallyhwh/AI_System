@@ -5,18 +5,26 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
-    // The React and Tailwind plugins are both required for Make, even if
-    // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
   ],
   resolve: {
     alias: {
-      // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
     },
   },
 
-  // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
+  // 配置开发服务器代理，解决 CORS 问题
+  server: {
+    proxy: {
+      '/api/dify': {
+        target: 'https://api.dify.ai',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/dify/, ''),
+        secure: true,
+      },
+    },
+  },
+
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })

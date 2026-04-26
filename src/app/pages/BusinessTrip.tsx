@@ -24,6 +24,8 @@ import { DepartmentSearchModal } from "../components/DepartmentSearchModal";
 import { CostCenterSearchModal } from "../components/CostCenterSearchModal";
 import { CitySearchModal } from "../components/CitySearchModal";
 import { toast } from "sonner";
+import { businessTripApplyStream } from "../services/dify";
+import { saveTravelRequest, generateProcessNo } from "../utils/storage";
 
 
 
@@ -274,6 +276,8 @@ export function BusinessTrip() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(defaultForm);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiFormPreview, setAiFormPreview] = useState<string>("");
   const [errors, setErrors] = useState<string[]>([]);
   const [signatureAbnormalModalOpen, setSignatureAbnormalModalOpen] = useState(false);
   const [hrSearchOpen, setHRSearchOpen] = useState(false);
@@ -406,15 +410,88 @@ export function BusinessTrip() {
         setSignatureAbnormalModalOpen(true);
         return;
       }
-      
-      toast.success("出差申请已成功提交！");
+
+      // 保存出差申请到 localStorage
+      const processNo = generateProcessNo('10');
+      saveTravelRequest({
+        id: Date.now(),
+        processNo,
+        applicant: form.creator || '张三',
+        traveler: form.traveler,
+        employeeId: form.employeeId,
+        department: form.creatorDepartment || 'FSS3',
+        origin: form.departure,
+        destination: form.destination,
+        startDate: form.startDate,
+        endDate: form.returnDate,
+        days: form.tripDays,
+        reason: form.reason,
+        transport: form.transport,
+        tripType: form.tripType,
+        totalCost: form.totalCost,
+        status: '待审批',
+        createdAt: new Date().toISOString(),
+      });
+
+      toast.success(`出差申请已成功提交！\n流程编号：${processNo}`);
       setTimeout(() => navigate("/"), 1500);
     }
   };
 
-  const handleVoiceConfirm = () => {
+  const handleVoiceConfirm = async (text: string) => {
     setVoiceOpen(false);
-    toast.success("语音信息已录入，表单已自动填充！");
+    setAiLoading(true);
+    setAiFormPreview("");
+
+    try {
+      const result = await businessTripApplyStream(text, (chunk) => {
+        setAiFormPreview((prev) => prev + chunk);
+      });
+
+      if (result.formText) {
+        // 提取数据并填充表单
+        const data = result.formData;
+        console.log('Form data to fill:', data);
+
+        if (Object.keys(data).length > 0) {
+          setForm((prev) => ({
+            ...prev,
+            // 基本信息 - 出差人
+            traveler: data.traveler_name || prev.traveler,
+            // 出差明细
+            departure: data.origin || prev.departure,
+            destination: data.destination || prev.destination,
+            reason: data.travel_reason || prev.reason,
+            transport: data.transport || prev.transport,
+            startDate: data.start_date || prev.startDate,
+            returnDate: data.end_date || prev.returnDate,
+            tripDays: data.days || prev.tripDays,
+            roundKm: data.round_trip_km || prev.roundKm,
+            // 详细信息
+            tripType: data.travel_type || prev.tripType,
+            hasAllowance: data.is_subsidy || prev.hasAllowance,
+            isThirdParty: data.third_party_bear || prev.isThirdParty,
+            bookedByTrip: data.book_via_ctrip || prev.bookedByTrip,
+            costCenter: data.cost_center || prev.costCenter,
+            // 费用预估
+            transportCost: data.transport_cost || prev.transportCost,
+            hotelCost: data.hotel_cost || prev.hotelCost,
+            allowance: data.allowance || prev.allowance,
+            totalCost: data.total_cost || prev.totalCost,
+          }));
+          toast.success("AI 已识别信息并自动填充表单！");
+        } else {
+          toast.success("AI 已处理您的请求！");
+        }
+      } else {
+        toast.error("AI 未返回有效内容，请重试或手动填写");
+      }
+    } catch (error) {
+      console.error("AI processing error:", error);
+      toast.error("AI 处理出错，请手动填写表单");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleHRSearch = () => {
@@ -587,6 +664,53 @@ export function BusinessTrip() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-4">
+
+            {/* AI 智能助手区域 */}
+            <div className="bg-gradient-to-r from-[#8B1450]/5 to-[#8B1450]/10 rounded-lg shadow-sm p-4 border border-[#8B1450]/20">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-[#8B1450] flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-[#8B1450]">AI 智能助手</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  id="ai-input"
+                  placeholder="描述您的出差需求，如：我要申请下周从厦门到上海出差3天，客户拜访，坐高铁"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#8B1450]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const input = e.target as HTMLInputElement;
+                      if (input.value.trim()) {
+                        handleVoiceConfirm(input.value);
+                        input.value = "";
+                      }
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const input = document.getElementById("ai-input") as HTMLInputElement;
+                    if (input?.value.trim()) {
+                      handleVoiceConfirm(input.value);
+                      input.value = "";
+                    }
+                  }}
+                  disabled={aiLoading}
+                  className="px-4 py-2 bg-[#8B1450] text-white rounded-lg text-sm font-medium hover:bg-[#6e1040] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {aiLoading ? "处理中..." : "智能填充"}
+                </button>
+              </div>
+              {aiFormPreview && (
+                <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">
+                  {aiFormPreview}
+                </div>
+              )}
+            </div>
 
             {/* 基本信息区域 */}
             <div className="bg-white rounded-lg shadow-sm p-5">

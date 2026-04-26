@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowLeft,
@@ -29,6 +29,8 @@ import { DepartmentSearchModal } from "../components/DepartmentSearchModal";
 import { CostCenterSearchModal } from "../components/CostCenterSearchModal";
 import { CitySearchModal } from "../components/CitySearchModal";
 import { toast } from "sonner";
+import { travelReimbursementStream } from "../services/dify";
+import { getTravelRequests, TravelRequest } from "../utils/storage";
 
 const STEPS = [
   { label: "票据上传" },
@@ -121,6 +123,8 @@ export function TravelReimbursement() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiFormPreview, setAiFormPreview] = useState<string>("");
   const [ticketSelectorOpen, setTicketSelectorOpen] =
     useState(false);
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -200,14 +204,17 @@ export function TravelReimbursement() {
     { id: 1, type: 'CRM工单', name: 'CRM' },
     { id: 2, type: '出差申请', name: '出差申请' },
   ];
-  
-  // 模拟出差申请数据
-  const tripApplications = [
-    { id: 1, processNo: 'CCSQ10202 5030006', applicant: '张XX', traveler: '张XX', startDate: '2025-03-30', endDate: '2025-03-31', destination: 'Shanghai上海', reason: '456' },
-    { id: 2, processNo: 'CCSQ10202 5030003', applicant: '张XX', traveler: '张XX', startDate: '2025-03-25', endDate: '2025-03-26', destination: 'Changsha长沙', reason: '123' },
-    { id: 3, processNo: 'CCSQ10202 5030001', applicant: '张XX', traveler: '张XX', startDate: '2025-03-13', endDate: '2025-03-15', destination: 'Guangzhou广州', reason: '123' },
-    { id: 4, processNo: 'CCSQ10202 5030002', applicant: '张XX', traveler: '张XX', startDate: '2025-03-01', endDate: '2025-03-03', destination: 'Beijing北京', reason: '789' },
-  ];
+
+  // 从 localStorage 读取出差申请数据
+  const [tripApplications, setTripApplications] = useState<TravelRequest[]>([]);
+
+  // 初始化时读取出差申请列表
+  useEffect(() => {
+    const requests = getTravelRequests();
+    // 只显示待审批和已通过的申请
+    const validRequests = requests.filter(r => r.status === '待审批' || r.status === '已通过');
+    setTripApplications(validRequests);
+  }, []);
   const [form, setForm] = useState({
     title: "差旅报销申请-张XX-2026-03-05",
     reimburseType: "出差申请",
@@ -247,6 +254,21 @@ export function TravelReimbursement() {
     repaidAmount: "",
     actualRepayAmount: "",
     loanCurrency: "",
+    // 差旅信息字段
+    departurePlace: "",
+    destination: "",
+    applyDepartureDate: "",
+    applyReturnDate: "",
+    applyDays: "",
+    actualDepartureDate: "",
+    departureTime: "10:30",
+    actualReturnDate: "",
+    returnTime: "10:30",
+    actualDays: "",
+    transport: "",
+    breakfastCount: "0",
+    lunchCount: "0",
+    dinnerCount: "0",
   });
   const [transportRows, setTransportRows] = useState<
     TransportRow[]
@@ -414,9 +436,85 @@ export function TravelReimbursement() {
     setTimeout(() => navigate("/"), 1500);
   };
 
-  const handleVoiceConfirm = () => {
+  const handleVoiceConfirm = async (text: string) => {
     setVoiceOpen(false);
-    toast.success("语音信息已录入，表单已自动填充！");
+    setAiLoading(true);
+    setAiFormPreview("");
+
+    try {
+      const result = await travelReimbursementStream(text, (chunk) => {
+        setAiFormPreview((prev) => prev + chunk);
+      });
+
+      if (result.formText) {
+        const data = result.formData;
+        if (Object.keys(data).length > 0) {
+          // 更新表单状态
+          setForm((prev) => ({
+            ...prev,
+            // 基本信息
+            reimburseType: data.reimbursement_type || prev.reimburseType,
+            reimburser: data.reimbursment_person || prev.reimburser,
+            costCenter: data.cost_center || prev.costCenter,
+            isThirdParty: data.third_party_bear === "是" ? "是" : "否",
+            isCtripHotel: data.book_via_ctrip === "是" ? "是" : "否",
+            allowance: String(data.subsidy || prev.allowance),
+            applyTotal: String(data.total_amount || prev.applyTotal),
+            // 差旅信息
+            departurePlace: data.origin || prev.departurePlace,
+            destination: data.destination || prev.destination,
+            applyDepartureDate: data.apply_start_date || prev.applyDepartureDate,
+            applyReturnDate: data.apply_end_date || prev.applyReturnDate,
+            applyDays: data.apply_days ? String(data.apply_days) : prev.applyDays,
+            actualDepartureDate: data.actual_start_date || prev.actualDepartureDate,
+            actualReturnDate: data.actual_end_date || prev.actualReturnDate,
+            actualDays: data.actual_days ? String(data.actual_days) : prev.actualDays,
+            transport: data.transport || prev.transport,
+            breakfastCount: data.breakfast_count !== undefined ? String(data.breakfast_count) : prev.breakfastCount,
+            lunchCount: data.lunch_count !== undefined ? String(data.lunch_count) : prev.lunchCount,
+            dinnerCount: data.dinner_count !== undefined ? String(data.dinner_count) : prev.dinnerCount,
+          }));
+
+          // 更新交通费表格
+          if (data.transport_total) {
+            setTransportRows([{
+              id: Date.now(),
+              date: data.actual_start_date || '',
+              from: data.origin || '',
+              to: data.destination || '',
+              reason: '',
+              amount: String(data.transport_total),
+              currency: 'RMB',
+            }]);
+          }
+
+          // 更新住宿费表格
+          if (data.hotel_total) {
+            setHotelRows([{
+              id: Date.now(),
+              city: data.destination || '',
+              days: String(data.actual_days || 1),
+              exTax: '',
+              tax: '',
+              total: String(data.hotel_total),
+              currency: 'RMB',
+              reason: '',
+            }]);
+          }
+
+          toast.success("AI 已识别信息并自动填充表单！");
+        } else {
+          toast.success("AI 已处理您的请求！");
+        }
+      } else {
+        toast.error("AI 未返回有效内容，请重试或手动填写");
+      }
+    } catch (error) {
+      console.error("AI processing error:", error);
+      toast.error("AI 处理出错，请手动填写表单");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleHRSearch = () => {
@@ -817,6 +915,53 @@ export function TravelReimbursement() {
               accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx"
             />
 
+            {/* AI 智能助手区域 */}
+            <div className="bg-gradient-to-r from-[#8B1450]/5 to-[#8B1450]/10 rounded-lg shadow-sm p-4 border border-[#8B1450]/20">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-[#8B1450] flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-[#8B1450]">AI 智能助手</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  id="ai-input-reimburse"
+                  placeholder="描述您的报销需求，如：我要报销上周到上海出差的费用，高铁票320元，住宿2晚共600元"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#8B1450]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const input = e.target as HTMLInputElement;
+                      if (input.value.trim()) {
+                        handleVoiceConfirm(input.value);
+                        input.value = "";
+                      }
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const input = document.getElementById("ai-input-reimburse") as HTMLInputElement;
+                    if (input?.value.trim()) {
+                      handleVoiceConfirm(input.value);
+                      input.value = "";
+                    }
+                  }}
+                  disabled={aiLoading}
+                  className="px-4 py-2 bg-[#8B1450] text-white rounded-lg text-sm font-medium hover:bg-[#6e1040] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {aiLoading ? "处理中..." : "智能填充"}
+                </button>
+              </div>
+              {aiFormPreview && (
+                <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200 text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">
+                  {aiFormPreview}
+                </div>
+              )}
+            </div>
+
             {/* 基本信息区域 */}
             <div className="bg-white rounded-lg shadow-sm p-5">
               <div className="flex items-center mb-4 pb-2 border-b border-gray-200">
@@ -961,16 +1106,27 @@ export function TravelReimbursement() {
                   />
                 </Field>
                 <Field label="出差申请列表" required>
-                  <input
-                    className={inputCls}
-                    value={form.tripApplicationList}
-                    onChange={(e) =>
-                      updateForm(
-                        "tripApplicationList",
-                        e.target.value,
-                      )
-                    }
-                  />
+                  <div className="relative">
+                    <input
+                      className={inputCls}
+                      value={form.tripApplicationList}
+                      onChange={(e) =>
+                        updateForm(
+                          "tripApplicationList",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="点击搜索选择出差申请"
+                      readOnly
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTripTypeModalOpen(true)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#8B1450]"
+                    >
+                      <Search size={14} />
+                    </button>
+                  </div>
                 </Field>
                 <Field label="是否第三方承担费用" required>
                   <select
@@ -1103,7 +1259,9 @@ export function TravelReimbursement() {
                       <div className="relative">
                         <input
                           className={inputCls}
-                          defaultValue="Xiamen厦门"
+                          value={form.departurePlace}
+                          onChange={(e) => setForm(f => ({ ...f, departurePlace: e.target.value }))}
+                          placeholder="请输入出发地"
                         />
                         <button
                           type="button"
@@ -1118,7 +1276,9 @@ export function TravelReimbursement() {
                       <div className="relative">
                         <input
                           className={inputCls}
-                          defaultValue="Shanghai上海"
+                          value={form.destination}
+                          onChange={(e) => setForm(f => ({ ...f, destination: e.target.value }))}
+                          placeholder="请输入目的地"
                         />
                         <button
                           type="button"
@@ -1133,58 +1293,70 @@ export function TravelReimbursement() {
                       <input
                         className={inputCls}
                         type="date"
-                        defaultValue="2026-02-25"
+                        value={form.applyDepartureDate}
+                        onChange={(e) => setForm(f => ({ ...f, applyDepartureDate: e.target.value }))}
                       />
                     </Field>
                     <Field label="申请返程日">
                       <input
                         className={inputCls}
                         type="date"
-                        defaultValue="2026-02-27"
+                        value={form.applyReturnDate}
+                        onChange={(e) => setForm(f => ({ ...f, applyReturnDate: e.target.value }))}
                       />
                     </Field>
                     <Field label="申请天数">
                       <input
                         className={inputCls}
-                        defaultValue="3"
+                        value={form.applyDays}
+                        onChange={(e) => setForm(f => ({ ...f, applyDays: e.target.value }))}
                       />
                     </Field>
                     <Field label="实际出发日" required>
                       <input
                         className={inputCls}
                         type="date"
-                        defaultValue="2026-02-25"
+                        value={form.actualDepartureDate}
+                        onChange={(e) => setForm(f => ({ ...f, actualDepartureDate: e.target.value }))}
                       />
                     </Field>
                     <Field label="出发时间" required>
                       <input
                         className={inputCls}
                         type="time"
-                        defaultValue="10:30"
+                        value={form.departureTime}
+                        onChange={(e) => setForm(f => ({ ...f, departureTime: e.target.value }))}
                       />
                     </Field>
                     <Field label="实际返程日" required>
                       <input
                         className={inputCls}
                         type="date"
-                        defaultValue="2026-02-27"
+                        value={form.actualReturnDate}
+                        onChange={(e) => setForm(f => ({ ...f, actualReturnDate: e.target.value }))}
                       />
                     </Field>
                     <Field label="返程时间" required>
                       <input
                         className={inputCls}
                         type="time"
-                        defaultValue="10:30"
+                        value={form.returnTime}
+                        onChange={(e) => setForm(f => ({ ...f, returnTime: e.target.value }))}
                       />
                     </Field>
                     <Field label="实际天数">
                       <input
                         className={inputCls}
-                        defaultValue="3"
+                        value={form.actualDays}
+                        onChange={(e) => setForm(f => ({ ...f, actualDays: e.target.value }))}
                       />
                     </Field>
                     <Field label="交通工具">
-                      <select className={selectCls}>
+                      <select
+                        className={selectCls}
+                        value={form.transport}
+                        onChange={(e) => setForm(f => ({ ...f, transport: e.target.value }))}
+                      >
                         <option value=""> </option>
                         <option>飞机</option>
                         <option>客运大巴</option>
@@ -1197,19 +1369,22 @@ export function TravelReimbursement() {
                     <Field label="早餐">
                       <input
                         className={inputCls}
-                        defaultValue="3"
+                        value={form.breakfastCount}
+                        onChange={(e) => setForm(f => ({ ...f, breakfastCount: e.target.value }))}
                       />
                     </Field>
                     <Field label="午餐">
                       <input
                         className={inputCls}
-                        defaultValue=""
+                        value={form.lunchCount}
+                        onChange={(e) => setForm(f => ({ ...f, lunchCount: e.target.value }))}
                       />
                     </Field>
                     <Field label="晚餐">
                       <input
                         className={inputCls}
-                        defaultValue=""
+                        value={form.dinnerCount}
+                        onChange={(e) => setForm(f => ({ ...f, dinnerCount: e.target.value }))}
                       />
                     </Field>
                   </div>
@@ -2699,33 +2874,75 @@ export function TravelReimbursement() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left py-2 px-3 font-medium text-gray-600">流程编号</th>
                       <th className="text-left py-2 px-3 font-medium text-gray-600">申请人</th>
                       <th className="text-left py-2 px-3 font-medium text-gray-600">实际出差人</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-600">出差开始日期</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-600">出差返回日期</th>
+                      <th className="text-left py-2 px-3 font-medium text-gray-600">出差日期</th>
                       <th className="text-left py-2 px-3 font-medium text-gray-600">目的地</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-600">出差原因</th>
+                      <th className="text-left py-2 px-3 font-medium text-gray-600">状态</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {tripApplications.map((app) => (
-                      <tr key={app.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => {
-                        updateForm("tripType", app.processNo);
-                        setTripTypeModalOpen(false);
-                      }}>
-                        <td className="py-2 px-3">{app.applicant}</td>
-                        <td className="py-2 px-3">{app.traveler}</td>
-                        <td className="py-2 px-3">{app.startDate}</td>
-                        <td className="py-2 px-3">{app.endDate}</td>
-                        <td className="py-2 px-3">{app.destination}</td>
-                        <td className="py-2 px-3">{app.reason}</td>
+                    {tripApplications.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-400">
+                          暂无出差申请记录，请先提交出差申请
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      tripApplications.map((app) => (
+                        <tr key={app.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => {
+                          // 关联出差申请，自动填充相关信息
+                          setForm(prev => ({
+                            ...prev,
+                            // 关联信息
+                            tripType: app.processNo,
+                            tripApplicationList: app.processNo,
+                            // 报销人信息（与出差人一致）
+                            reimburser: app.traveler,
+                            employeeId: app.employeeId,
+                            // 出差信息
+                            hasAllowance: '是',
+                          }));
+
+                          // 自动填充交通费明细
+                          if (app.origin && app.destination) {
+                            setTransportRows([{
+                              id: Date.now(),
+                              date: app.startDate,
+                              from: app.origin,
+                              to: app.destination,
+                              reason: app.reason,
+                              amount: '',
+                              currency: 'RMB',
+                            }]);
+                          }
+
+                          setTripTypeModalOpen(false);
+                          toast.success(`已关联出差申请：${app.processNo}\n已自动填充出差信息`);
+                        }}>
+                          <td className="py-2 px-3 text-[#8B1450] font-medium">{app.processNo}</td>
+                          <td className="py-2 px-3">{app.applicant}</td>
+                          <td className="py-2 px-3">{app.traveler}</td>
+                          <td className="py-2 px-3">{app.startDate} ~ {app.endDate}</td>
+                          <td className="py-2 px-3">{app.destination}</td>
+                          <td className="py-2 px-3">
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              app.status === '已通过' ? 'bg-green-100 text-green-700' :
+                              app.status === '已拒绝' ? 'bg-red-100 text-red-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {app.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
               <div className="mt-4 flex justify-between items-center">
-                <div className="text-sm text-gray-500">共 4 条</div>
+                <div className="text-sm text-gray-500">共 {tripApplications.length} 条</div>
                 <div className="flex items-center gap-1">
                   <button className="w-6 h-6 flex items-center justify-center rounded border border-gray-200 text-gray-400 disabled:cursor-not-allowed" disabled>
                     <ChevronLeft size={14} />

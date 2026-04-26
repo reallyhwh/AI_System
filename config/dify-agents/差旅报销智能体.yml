@@ -1,0 +1,1174 @@
+app:
+  description: '林德叉车差旅报销全流程智能体
+    功能：票据识别 → 信息填充 → 费用计算 → 合规校验 → 表单生成
+    支持出差申请报销和CRM工单报销两种类型'
+  icon: 💰
+  icon_background: '#E4F5FF'
+  mode: advanced-chat
+  name: 差旅报销智能体
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.1.33@608ec1e7d07dd52e582cff58561a8c75c989951186ffc59452dfffe3d8051230
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      - .PDF
+      - .DOC
+      - .DOCX
+      allowed_file_types:
+      - image
+      - document
+      allowed_file_upload_methods:
+      - local_file
+      remote_url:
+      enabled: true
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: '您好！我是差旅报销智能助手。
+
+      请描述您的报销需求，我会帮您：
+      ✅ 自动识别票据信息（交通费、住宿费）
+      ✅ 从出差申请/CRM工单带出相关信息
+      ✅ 计算差旅补贴（含扣除规则）
+      ✅ 进行合规性校验和超标处理
+      ✅ 生成完整的报销申请表单
+
+      示例输入：
+      "我要报销上周到上海出差的费用，高铁票320元，住宿2晚共600元"
+      "报销CRM工单C202604001的差旅费用"'
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 我要报销上周厦门到上海的出差费用
+    - 报销CRM工单的客户服务费用
+    - 处理国外出差的报销申请
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    # 用户输入 → 报销类型识别
+    - data:
+        sourceType: start
+        targetType: llm
+      id: start-type_llm
+      source: start
+      sourceHandle: source
+      target: type_llm
+      targetHandle: target
+      type: custom
+    # 报销类型识别 → 信息提取
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: type_llm-extract_code
+      source: type_llm
+      sourceHandle: source
+      target: extract_code
+      targetHandle: target
+      type: custom
+    # 信息提取 → 费用计算
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: extract_code-calculate_code
+      source: extract_code
+      sourceHandle: source
+      target: calculate_code
+      targetHandle: target
+      type: custom
+    # 费用计算 → 合规校验
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: calculate_code-validate_llm
+      source: calculate_code
+      sourceHandle: source
+      target: validate_llm
+      targetHandle: target
+      type: custom
+    # 合规校验 → 表单生成
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: validate_llm-form_code
+      source: validate_llm
+      sourceHandle: source
+      target: form_code
+      targetHandle: target
+      type: custom
+    # 表单生成 → 直接回复
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: answer
+      id: form_code-final_answer
+      source: form_code
+      sourceHandle: source
+      target: final_answer
+      targetHandle: target
+      type: custom
+    nodes:
+    # ==================== 开始节点 ====================
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables: []
+      height: 72
+      id: start
+      position:
+        x: 80
+        y: 280
+      positionAbsolute:
+        x: 80
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+
+    # ==================== 报销类型识别 LLM ====================
+    - data:
+        context:
+          enabled: false
+        model:
+          completion_params: {}
+          mode: chat
+          name: qwen2.5-3b-instruct
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: type_system
+          role: system
+          text: |
+            # 角色：差旅报销信息识别专家
+
+            ## 任务
+            从用户输入中识别报销类型和票据信息，严格按照JSON格式输出。
+
+            ## 当前日期
+            今天是2026-04-26，请据此计算相对日期。
+
+            ## 报销类型识别
+            - 如果用户提到"出差申请"、"出差单号"、"出差申请单"等，识别为"出差申请"
+            - 如果用户提到"CRM工单"、"工单号"、"客户服务"等，识别为"CRM工单"
+            - 默认为"出差申请"
+
+            ## 需要提取的字段
+
+            ### 一、基本信息
+            - reimbursement_type: 报销类型（出差申请/CRM工单）
+            - applicant_name: 申请人姓名
+            - employee_id: 员工号
+            - company_code: 公司编码
+            - department: 部门名称
+
+            ### 二、报销人信息
+            - reimbursment_person: 实际报销人姓名
+            - reimbursment_person_id: 实际报销人工号
+            - reimbursment_dept: 实际报销人部门
+            - cost_center: 成本中心编码
+            - internal_order: 内部订单号（仅10/20/30/40/60公司）
+
+            ### 三、出差申请类型字段（报销类型为"出差申请"时）
+            - travel_request_no: 出差申请单号
+            - origin: 出发地
+            - destination: 目的地
+            - apply_start_date: 申请出发日
+            - apply_end_date: 申请返程日
+            - apply_days: 申请天数
+            - actual_start_date: 实际出发日
+            - actual_end_date: 实际返程日
+            - transport: 交通工具（飞机/客运大巴/船/火车/动车/高铁/自驾车/售后服务车）
+            - breakfast_count: 早餐次数
+            - lunch_count: 午餐次数
+            - dinner_count: 晚餐次数
+
+            ### 四、CRM工单类型字段（报销类型为"CRM工单"时）
+            - crm_order_no: CRM工单号
+            - crm_start_date: 出发日期
+            - crm_end_date: 返程日期
+            - crm_car_no: 车牌号
+            - customer_name: 客户名称
+            - customer_address: 客户地址
+            - crm_origin: 出发地
+            - crm_destination: 目的地
+            - actual_travel_days: 实际出差天数
+            - round_trip_km: 往返公里数
+
+            ### 五、交通费信息（从票据识别）
+            - transport_fee_list: 交通费列表，每项包含：
+              - date: 日期
+              - origin: 出发地
+              - destination: 目的地
+              - amount: 金额
+              - currency: 币种
+              - invoice_no: 发票号码
+
+            ### 六、住宿费信息（从票据识别）
+            - accommodation_fee_list: 住宿费列表，每项包含：
+              - city: 住宿城市
+              - days: 住宿天数
+              - currency: 币种
+              - amount_ex_tax: 不含税金额
+              - tax_amount: 进项税额
+              - total_amount: 住宿费总金额
+              - invoice_no: 发票号码
+
+            ### 七、其他信息
+            - third_party_bear: 是否第三方承担费用（是/否）
+            - third_party_unit: 第三方费用承担单位
+            - book_via_ctrip: 是否通过携程预订酒店（是/否）
+            - other_attachments: 其他附件说明
+
+            ## 输出格式
+            严格按以下JSON格式输出：
+
+            ```json
+            {
+              "reimbursement_type": "出差申请",
+              "applicant_name": null,
+              "employee_id": null,
+              "company_code": null,
+              "department": null,
+              "reimbursment_person": null,
+              "reimbursment_person_id": null,
+              "reimbursment_dept": null,
+              "cost_center": null,
+              "internal_order": null,
+              "travel_request_no": null,
+              "origin": null,
+              "destination": null,
+              "apply_start_date": null,
+              "apply_end_date": null,
+              "apply_days": null,
+              "actual_start_date": null,
+              "actual_end_date": null,
+              "transport": null,
+              "breakfast_count": 0,
+              "lunch_count": 0,
+              "dinner_count": 0,
+              "crm_order_no": null,
+              "crm_start_date": null,
+              "crm_end_date": null,
+              "crm_car_no": null,
+              "customer_name": null,
+              "customer_address": null,
+              "crm_origin": null,
+              "crm_destination": null,
+              "actual_travel_days": null,
+              "round_trip_km": null,
+              "transport_fee_list": [],
+              "accommodation_fee_list": [],
+              "third_party_bear": "否",
+              "third_party_unit": null,
+              "book_via_ctrip": "否",
+              "other_attachments": null
+            }
+            ```
+
+            ## 注意事项
+            1. 只输出JSON，不要有任何其他文字
+            2. 日期必须转换为YYYY-MM-DD格式
+            3. 根据报销类型填充对应字段
+            4. 交通费和住宿费从用户描述中提取金额信息
+        - id: type_user
+          role: user
+          text: '用户输入：{{#sys.query#}}'
+        selected: false
+        title: 报销类型识别
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: type_llm
+      position:
+        x: 380
+        y: 265
+      positionAbsolute:
+        x: 380
+        y: 265
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+
+    # ==================== 信息提取 Code ====================
+    - data:
+        code: |
+          import json
+          import re
+          from datetime import datetime, timedelta
+          import random
+
+          def main(extract_result):
+              # 解析LLM输出的JSON
+              try:
+                  json_match = re.search(r'```json\s*(.*?)\s*```', extract_result, re.DOTALL)
+                  if json_match:
+                      data = json.loads(json_match.group(1))
+                  else:
+                      data = json.loads(extract_result)
+              except:
+                  data = {"reimbursement_type": "出差申请"}
+
+              reimbursement_type = data.get('reimbursement_type', '出差申请')
+
+              # 模拟从OA系统获取出差申请信息
+              if reimbursement_type == "出差申请":
+                  # 模拟出差申请数据
+                  mock_travel_request = {
+                      "travel_request_no": data.get('travel_request_no') or f"CCSQ{datetime.now().strftime('%Y%m')}0001",
+                      "origin": data.get('origin') or "厦门",
+                      "destination": data.get('destination') or "上海",
+                      "apply_start_date": data.get('apply_start_date') or (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'),
+                      "apply_end_date": data.get('apply_end_date') or (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'),
+                      "apply_days": data.get('apply_days') or 3,
+                      "apply_transport": data.get('transport') or "火车/动车/高铁",
+                      "book_via_ctrip": data.get('book_via_ctrip') or "否"
+                  }
+
+                  # 计算申请天数
+                  if mock_travel_request['apply_start_date'] and mock_travel_request['apply_end_date']:
+                      try:
+                          start = datetime.strptime(mock_travel_request['apply_start_date'], '%Y-%m-%d')
+                          end = datetime.strptime(mock_travel_request['apply_end_date'], '%Y-%m-%d')
+                          mock_travel_request['apply_days'] = (end - start).days + 1
+                      except:
+                          mock_travel_request['apply_days'] = 3
+
+                  data.update(mock_travel_request)
+
+              # 模拟从CRM系统获取工单信息
+              elif reimbursement_type == "CRM工单":
+                  mock_crm_order = {
+                      "crm_order_no": data.get('crm_order_no') or f"CRM{datetime.now().strftime('%Y%m')}0001",
+                      "crm_start_date": data.get('crm_start_date') or (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d'),
+                      "crm_end_date": data.get('crm_end_date') or (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
+                      "crm_car_no": data.get('crm_car_no') or "闽D12345",
+                      "customer_name": data.get('customer_name') or "示例客户有限公司",
+                      "customer_address": data.get('customer_address') or "上海市浦东新区",
+                      "crm_origin": data.get('crm_origin') or "厦门",
+                      "crm_destination": data.get('crm_destination') or "上海",
+                      "round_trip_km": data.get('round_trip_km') or 1000
+                  }
+                  data.update(mock_crm_order)
+
+              # 模拟票据识别结果 - 交通费
+              transport_fee_list = data.get('transport_fee_list', [])
+              if not transport_fee_list:
+                  # 如果用户没有提供，生成模拟数据
+                  transport_fee_list = [
+                      {
+                          "date": data.get('actual_start_date') or (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'),
+                          "origin": data.get('origin') or "厦门",
+                          "destination": data.get('destination') or "上海",
+                          "amount": 320.00,
+                          "currency": "RMB",
+                          "invoice_no": f"INV{random.randint(100000, 999999)}"
+                      },
+                      {
+                          "date": data.get('actual_end_date') or (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'),
+                          "origin": data.get('destination') or "上海",
+                          "destination": data.get('origin') or "厦门",
+                          "amount": 320.00,
+                          "currency": "RMB",
+                          "invoice_no": f"INV{random.randint(100000, 999999)}"
+                      }
+                  ]
+              data['transport_fee_list'] = transport_fee_list
+
+              # 模拟票据识别结果 - 住宿费
+              accommodation_fee_list = data.get('accommodation_fee_list', [])
+              if not accommodation_fee_list:
+                  accommodation_fee_list = [
+                      {
+                          "city": data.get('destination') or "上海",
+                          "days": data.get('apply_days', 3) - 1 or 2,
+                          "currency": "RMB",
+                          "amount_ex_tax": 530.97,
+                          "tax_amount": 31.86,
+                          "total_amount": 562.83,
+                          "invoice_no": f"ACC{random.randint(100000, 999999)}"
+                      }
+                  ]
+              data['accommodation_fee_list'] = accommodation_fee_list
+
+              # 模拟申请人信息
+              data['applicant_name'] = data.get('applicant_name') or "张三"
+              data['employee_id'] = data.get('employee_id') or "E001234"
+              data['company_code'] = data.get('company_code') or "10"
+              data['department'] = data.get('department') or "销售部"
+
+              # 实际报销人信息
+              data['reimbursment_person'] = data.get('reimbursment_person') or data.get('applicant_name', "张三")
+              data['reimbursment_person_id'] = data.get('reimbursment_person_id') or data.get('employee_id', "E001234")
+              data['reimbursment_dept'] = data.get('reimbursment_dept') or data.get('department', "销售部")
+              data['cost_center'] = data.get('cost_center') or "CC001"
+
+              return {
+                  "extract_data": data,
+                  "reimbursement_type": reimbursement_type
+              }
+        code_language: python3
+        outputs:
+          extract_data:
+            children: null
+            type: object
+          reimbursement_type:
+            children: null
+            type: string
+        selected: false
+        title: 信息提取
+        type: code
+        variables:
+        - value_selector:
+          - type_llm
+          - text
+          value_type: string
+          variable: extract_result
+      height: 51
+      id: extract_code
+      position:
+        x: 680
+        y: 265
+      positionAbsolute:
+        x: 680
+        y: 265
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+
+    # ==================== 费用计算 Code ====================
+    - data:
+        code: |
+          import json
+          from datetime import datetime, timedelta
+
+          def main(extract_data):
+              # 解析数据
+              try:
+                  if isinstance(extract_data, str):
+                      data = json.loads(extract_data)
+                  else:
+                      data = extract_data if extract_data else {}
+              except:
+                  data = {}
+
+              reimbursement_type = data.get('reimbursement_type', '出差申请')
+
+              # ========== 交通费计算 ==========
+              transport_fee_list = data.get('transport_fee_list', [])
+              total_transport_fee = sum(float(item.get('amount') or 0) for item in transport_fee_list)
+              transport_invoice_list = [item.get('invoice_no') or '' for item in transport_fee_list]
+
+              # ========== 住宿费计算 ==========
+              accommodation_fee_list = data.get('accommodation_fee_list', [])
+              total_accommodation_fee = sum(float(item.get('total_amount') or 0) for item in accommodation_fee_list)
+              total_accommodation_ex_tax = sum(float(item.get('amount_ex_tax') or 0) for item in accommodation_fee_list)
+              total_accommodation_tax = sum(float(item.get('tax_amount') or 0) for item in accommodation_fee_list)
+              accommodation_invoice_list = [item.get('invoice_no') or '' for item in accommodation_fee_list]
+
+              # ========== 出差天数计算 ==========
+              actual_start_date = data.get('actual_start_date') or data.get('apply_start_date')
+              actual_end_date = data.get('actual_end_date') or data.get('apply_end_date')
+
+              actual_days = 0
+              if actual_start_date and actual_end_date:
+                  try:
+                      start = datetime.strptime(actual_start_date, '%Y-%m-%d')
+                      end = datetime.strptime(actual_end_date, '%Y-%m-%d')
+                      actual_days = (end - start).days + 1
+                  except:
+                      actual_days = data.get('apply_days', 3)
+
+              # ========== 差旅补贴计算 ==========
+              # 出发时间和返回时间（用于扣除计算）
+              departure_time = data.get('departure_time') or "08:00"  # 默认早班
+              return_time = data.get('return_time') or "18:00"  # 默认晚班
+
+              # 判断是否享受补贴
+              is_subsidy = data.get('is_subsidy', '是')
+              round_trip_km = data.get('round_trip_km') or 1000
+
+              # 补贴基础金额
+              destination = data.get('destination') or data.get('crm_destination') or ''
+              is_domestic = '国外' not in (data.get('travel_type') or '国内出差')
+
+              subsidy_base = 0
+              if is_subsidy == '是':
+                  if is_domestic:
+                      subsidy_base = 100 * actual_days  # 国内100元/天
+                  else:
+                      # 国外补贴标准（模拟数据）
+                      country_subsidy = {
+                          '美国': 500, '德国': 400, '英国': 400, '日本': 350,
+                          '新加坡': 350, '韩国': 300, '法国': 380, '澳大利亚': 400
+                      }
+                      daily_rate = country_subsidy.get(destination, 300)
+                      subsidy_base = daily_rate * actual_days
+
+              # ========== 扣除金额计算 ==========
+              deduction_amount = 0
+              deduction_details = []
+
+              # 1. 出发时间扣除
+              dep_hour = int(departure_time.split(':')[0])
+              if 10 <= dep_hour < 14:
+                  dep_deduction_rate = 0.20
+              elif 14 <= dep_hour < 18:
+                  dep_deduction_rate = 0.40
+              elif 18 <= dep_hour <= 24:
+                  dep_deduction_rate = 0.70
+              else:
+                  dep_deduction_rate = 0
+
+              if is_domestic:
+                  dep_deduction = subsidy_base * dep_deduction_rate / actual_days  # 只扣第一天
+              else:
+                  dep_deduction = subsidy_base * dep_deduction_rate / actual_days
+              deduction_amount += dep_deduction
+              if dep_deduction > 0:
+                  deduction_details.append(f"出发时间扣除: {dep_deduction:.2f}元 ({dep_deduction_rate*100:.0f}%)")
+
+              # 2. 返回时间扣除
+              ret_hour = int(return_time.split(':')[0])
+              if 10 <= ret_hour < 14:
+                  ret_deduction_rate = 0.70
+              elif 14 <= ret_hour < 18:
+                  ret_deduction_rate = 0.40
+              elif 18 <= ret_hour <= 24:
+                  ret_deduction_rate = 0
+              else:
+                  ret_deduction_rate = 0
+
+              if is_domestic:
+                  ret_deduction = subsidy_base * ret_deduction_rate / actual_days
+              else:
+                  ret_deduction = subsidy_base * ret_deduction_rate / actual_days
+              deduction_amount += ret_deduction
+              if ret_deduction > 0:
+                  deduction_details.append(f"返回时间扣除: {ret_deduction:.2f}元 ({ret_deduction_rate*100:.0f}%)")
+
+              # 3. 餐费扣除
+              breakfast_count = data.get('breakfast_count') or 0
+              lunch_count = data.get('lunch_count') or 0
+              dinner_count = data.get('dinner_count') or 0
+
+              if is_domestic:
+                  breakfast_rate = 0.10
+                  lunch_rate = 0.20
+                  dinner_rate = 0.20
+              else:
+                  breakfast_rate = 0.20
+                  lunch_rate = 0.30
+                  dinner_rate = 0.30
+
+              daily_subsidy = subsidy_base / actual_days if actual_days > 0 else 0
+              meal_deduction = daily_subsidy * (breakfast_count * breakfast_rate + lunch_count * lunch_rate + dinner_count * dinner_rate)
+              deduction_amount += meal_deduction
+              if meal_deduction > 0:
+                  deduction_details.append(f"餐费扣除: {meal_deduction:.2f}元")
+
+              # 最终补贴
+              final_subsidy = max(subsidy_base - deduction_amount, 0)
+
+              # ========== 住宿标准校验 ==========
+              # 模拟住宿标准（根据城市和职级）
+              hotel_standard = {
+                  '北京': 450, '上海': 450, '广州': 400, '深圳': 400,
+                  '厦门': 350, '杭州': 400, '南京': 380, '成都': 350
+              }
+              standard_per_night = hotel_standard.get(destination, 350)
+
+              # 计算住宿超标金额
+              accommodation_days = sum(item.get('days', 0) for item in accommodation_fee_list)
+              standard_total = standard_per_night * accommodation_days
+              over_standard_amount = max(total_accommodation_fee - standard_total, 0)
+
+              # ========== 申请金额合计 ==========
+              total_amount = total_transport_fee + total_accommodation_fee + final_subsidy - over_standard_amount
+
+              # 构建计算结果
+              calculate_result = {
+                  "actual_days": actual_days,
+                  "transport_fee": {
+                      "total": round(total_transport_fee, 2),
+                      "count": len(transport_fee_list),
+                      "invoices": transport_invoice_list
+                  },
+                  "accommodation_fee": {
+                      "total": round(total_accommodation_fee, 2),
+                      "ex_tax": round(total_accommodation_ex_tax, 2),
+                      "tax": round(total_accommodation_tax, 2),
+                      "count": len(accommodation_fee_list),
+                      "invoices": accommodation_invoice_list,
+                      "standard": standard_per_night,
+                      "standard_total": standard_total,
+                      "over_standard": round(over_standard_amount, 2)
+                  },
+                  "subsidy": {
+                      "base": round(subsidy_base, 2),
+                      "deduction": round(deduction_amount, 2),
+                      "deduction_details": deduction_details,
+                      "final": round(final_subsidy, 2),
+                      "is_domestic": is_domestic
+                  },
+                  "total_amount": round(total_amount, 2),
+                  "currency": "RMB"
+              }
+
+              return {
+                  "extract_data": data,
+                  "calculate_result": calculate_result,
+                  "reimbursement_type": reimbursement_type
+              }
+        code_language: python3
+        outputs:
+          extract_data:
+            children: null
+            type: object
+          calculate_result:
+            children: null
+            type: object
+          reimbursement_type:
+            children: null
+            type: string
+        selected: false
+        title: 费用计算
+        type: code
+        variables:
+        - value_selector:
+          - extract_code
+          - extract_data
+          value_type: object
+          variable: extract_data
+      height: 51
+      id: calculate_code
+      position:
+        x: 980
+        y: 265
+      positionAbsolute:
+        x: 980
+        y: 265
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+
+    # ==================== 合规校验 LLM ====================
+    - data:
+        context:
+          enabled: false
+        model:
+          completion_params: {}
+          mode: chat
+          name: qwen2.5-3b-instruct
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: validate_system
+          role: system
+          text: |
+            # 角色：差旅报销合规校验专家
+
+            ## 任务
+            根据林德叉车差旅报销管理规定，对报销申请进行合规性校验。
+
+            ## 校验规则
+
+            ### 一、必填字段校验（强控）
+            以下字段必须填写，缺失则不能提交：
+            - reimbursment_person: 实际报销人
+            - cost_center: 成本中心
+            - origin: 出发地
+            - destination: 目的地
+            - actual_start_date: 实际出发日
+            - actual_end_date: 实际返程日
+            - transport: 交通工具
+
+            ### 二、票据校验
+            1. 交通费票据必须存在
+            2. 住宿费票据与出差天数匹配
+            3. 发票号码唯一，不可重复报销
+
+            ### 三、金额校验
+            1. 交通费金额合理性
+            2. 住宿费是否超标
+            3. 总金额异常（>10000元提醒，>50000元强控）
+
+            ### 四、出差申请校验（报销类型为出差申请时）
+            1. 出差申请单号必须存在
+            2. 实际日期应在申请日期范围内
+            3. 交通工具应与申请一致
+
+            ### 五、CRM工单校验（报销类型为CRM工单时）
+            1. CRM工单号必须存在
+            2. 客户信息完整
+            3. 往返公里数合理
+
+            ### 六、异常等级
+            - **强控异常**：必须修改才能提交
+            - **提醒异常**：可以提交但需确认
+            - **正常**：符合所有规则
+
+            ## 输出格式
+            以JSON格式输出校验结果：
+
+            ```json
+            {
+              "status": "正常/提醒异常/强控异常",
+              "missing_required": ["缺失的必填字段列表"],
+              "errors": ["强控异常列表"],
+              "warnings": ["提醒信息列表"],
+              "can_submit": true/false,
+              "suggestions": ["修改建议"]
+            }
+            ```
+        - id: validate_user
+          role: user
+          text: |
+            请校验以下差旅报销申请：
+
+            【报销类型】
+            {{#calculate_code.reimbursement_type#}}
+
+            【提取的信息】
+            {{#calculate_code.extract_data#}}
+
+            【费用计算结果】
+            {{#calculate_code.calculate_result#}}
+
+            请严格按照规则进行校验，输出JSON格式的校验结果。
+        selected: false
+        title: 合规校验
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: validate_llm
+      position:
+        x: 1280
+        y: 265
+      positionAbsolute:
+        x: 1280
+        y: 265
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+
+    # ==================== 表单生成 Code ====================
+    - data:
+        code: |
+          import json
+          import re
+          from datetime import datetime
+
+          def main(extract_data, calculate_result, validate_result, reimbursement_type):
+              # 解析数据
+              try:
+                  if isinstance(extract_data, str):
+                      extract = json.loads(extract_data)
+                  else:
+                      extract = extract_data if extract_data else {}
+              except:
+                  extract = {}
+
+              try:
+                  if isinstance(calculate_result, str):
+                      calc = json.loads(calculate_result)
+                  else:
+                      calc = calculate_result if calculate_result else {}
+              except:
+                  calc = {}
+
+              try:
+                  if isinstance(validate_result, str):
+                      json_match = re.search(r'```json\s*(.*?)\s*```', validate_result, re.DOTALL)
+                      if json_match:
+                          validate = json.loads(json_match.group(1))
+                      else:
+                          validate = json.loads(validate_result)
+                  else:
+                      validate = validate_result if validate_result else {}
+              except:
+                  validate = {"status": "未知", "can_submit": True}
+
+              # 生成报销单号
+              company_code = extract.get('company_code', '00') or '00'
+              flow_no = f"CLBX{company_code.zfill(2)}{datetime.now().strftime('%Y%m')}0001"
+
+              # 生成标题
+              reimbursment_person = extract.get('reimbursment_person') or '申请人'
+              title = f"差旅报销-{reimbursment_person}-{datetime.now().strftime('%Y-%m-%d')}"
+
+              # 字段值显示
+              def show_val(val, default='❌ 未填写'):
+                  if val is None or val == '':
+                      return default
+                  return val
+
+              def show_bool(val, default='否'):
+                  if val is None or val == '':
+                      return default
+                  return val
+
+              # 构建表单
+              form = f"""
+          ╔══════════════════════════════════════════════════════════════╗
+          ║                    💰 差旅报销表单                            ║
+          ╚══════════════════════════════════════════════════════════════╝
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【基本信息】                            ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            报销单号　：{flow_no}（系统自动生成）
+            标　　题　：{title}（系统自动生成）
+            创建日期　：{datetime.now().strftime('%Y-%m-%d %H:%M')}（系统自动生成）
+            申 请 人　：{show_val(extract.get('applicant_name'), '当前用户')}
+            员 工 号　：{show_val(extract.get('employee_id'), '系统带出')}
+            创建人公司：{show_val(extract.get('company_code'), '系统带出')}
+            创建人部门：{show_val(extract.get('department'), '系统带出')}
+            报销类型　：{show_val(reimbursement_type)}
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【报销人信息】                          ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            实际报销人　　：{show_val(extract.get('reimbursment_person'))} ★必填
+            实际报销人工号：{show_val(extract.get('reimbursment_person_id'), '根据报销人带出')}
+            实际报销人部门：{show_val(extract.get('reimbursment_dept'), '根据报销人带出')}
+            成本中心　　　：{show_val(extract.get('cost_center'))} ★必填
+            内部订单号　　：{show_val(extract.get('internal_order'), '（仅10/20/30/40/60公司显示）')}
+            是否第三方承担：{show_bool(extract.get('third_party_bear'))}
+            第三方承担单位：{show_val(extract.get('third_party_unit'), '（第三方承担时必填）')}
+            携程预订酒店　：{show_bool(extract.get('book_via_ctrip'))}"""
+
+              # 根据报销类型显示不同信息
+              if reimbursement_type == "出差申请":
+                  form += f"""
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                    【出差申请信息】                          ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            出差申请单号　：{show_val(extract.get('travel_request_no'))} ★必填
+            出 发 地　　：{show_val(extract.get('origin'))} ★必填
+            目 的 地　　：{show_val(extract.get('destination'))} ★必填
+            申请出发日　：{show_val(extract.get('apply_start_date'))}
+            申请返程日　：{show_val(extract.get('apply_end_date'))}
+            申请天数　　：{extract.get('apply_days', 0)} 天
+            实际出发日　：{show_val(extract.get('actual_start_date'))} ★必填
+            实际返程日　：{show_val(extract.get('actual_end_date'))} ★必填
+            实际天数　　：{calc.get('actual_days', 0)} 天（自动计算）
+            交通工具　　：{show_val(extract.get('transport'))} ★必填
+            早 餐 次 数 ：{extract.get('breakfast_count', 0)} 次
+            午 餐 次 数 ：{extract.get('lunch_count', 0)} 次
+            晚 餐 次 数 ：{extract.get('dinner_count', 0)} 次"""
+
+              elif reimbursement_type == "CRM工单":
+                  form += f"""
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                    【CRM工单信息】                           ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            CRM工单号　　：{show_val(extract.get('crm_order_no'))} ★必填
+            出 发 日 期 ：{show_val(extract.get('crm_start_date'))}
+            返 程 日 期 ：{show_val(extract.get('crm_end_date'))}
+            车 牌 号　　：{show_val(extract.get('crm_car_no'), '无')}
+            客 户 名 称 ：{show_val(extract.get('customer_name'))}
+            客 户 地 址 ：{show_val(extract.get('customer_address'))}
+            出 发 地　　：{show_val(extract.get('crm_origin'))} ★必填
+            目 的 地　　：{show_val(extract.get('crm_destination'))} ★必填
+            实际出差天数：{show_val(extract.get('actual_travel_days'), calc.get('actual_days', 0))} 天
+            往返公里数　：{show_val(extract.get('round_trip_km'), '系统计算')} 公里"""
+
+              # 交通费明细
+              transport_fee = calc.get('transport_fee', {})
+              form += f"""
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【交通费明细】                          ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            交通费票据数：{transport_fee.get('count', 0)} 张
+            交通费合计　：¥ {transport_fee.get('total', 0):,.2f}
+            发票号码　　：{', '.join(transport_fee.get('invoices', []))}"""
+
+              # 住宿费明细
+              accommodation_fee = calc.get('accommodation_fee', {})
+              form += f"""
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【住宿费明细】                          ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            住宿费票据数：{accommodation_fee.get('count', 0)} 张
+            不含税金额　：¥ {accommodation_fee.get('ex_tax', 0):,.2f}
+            进项税额　　：¥ {accommodation_fee.get('tax', 0):,.2f}
+            住宿费合计　：¥ {accommodation_fee.get('total', 0):,.2f}
+            住宿标准　　：¥ {accommodation_fee.get('standard', 0):,.2f}/晚
+            标准总额　　：¥ {accommodation_fee.get('standard_total', 0):,.2f}
+            超标金额　　：¥ {accommodation_fee.get('over_standard', 0):,.2f}"""
+
+              # 差旅补贴明细
+              subsidy = calc.get('subsidy', {})
+              form += f"""
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【差旅补贴】                            ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            补贴基础金额：¥ {subsidy.get('base', 0):,.2f}
+            扣除金额　　：¥ {subsidy.get('deduction', 0):,.2f}"""
+
+              if subsidy.get('deduction_details'):
+                  form += "\n            扣除明细　　："
+                  for detail in subsidy['deduction_details']:
+                      form += f"\n               • {detail}"
+
+              form += f"""
+            实际补贴金额：¥ {subsidy.get('final', 0):,.2f}
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【费用汇总】                            ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+            交通费合计　：¥ {transport_fee.get('total', 0):,.2f}
+            住宿费合计　：¥ {accommodation_fee.get('total', 0):,.2f}
+            差旅补贴　　：¥ {subsidy.get('final', 0):,.2f}
+            超标扣除　　：¥ {accommodation_fee.get('over_standard', 0):,.2f}
+            ────────────────────────────────────────
+            申请金额合计：¥ {calc.get('total_amount', 0):,.2f}
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【合规校验】                            ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"""
+
+              status = validate.get('status', '正常')
+              can_submit = validate.get('can_submit', True)
+
+              if can_submit:
+                  form += f"\n            状态：✅ {status}"
+              else:
+                  form += f"\n            状态：❌ {status}"
+
+              # 缺失字段
+              if validate.get('missing_required'):
+                  form += f"\n            缺失必填字段：{', '.join(validate['missing_required'])}"
+
+              # 异常信息
+              if validate.get('errors'):
+                  form += f"\n            ⛔ 强控异常："
+                  for err in validate['errors']:
+                      form += f"\n               • {err}"
+              if validate.get('warnings'):
+                  form += f"\n            ⚠️ 提醒事项："
+                  for warn in validate['warnings']:
+                      form += f"\n               • {warn}"
+
+              # 建议
+              if validate.get('suggestions'):
+                  form += f"\n            💡 修改建议："
+                  for sug in validate['suggestions']:
+                      form += f"\n               • {sug}"
+
+              form += """
+
+          ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+          ┃                      【下一步操作】                          ┃
+          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"""
+
+              if can_submit:
+                  form += "\n            ✅ 表单已通过校验，可以提交至OA系统审批"
+              else:
+                  form += "\n            ❌ 请补充缺失信息或修正异常后重新提交"
+
+              form += "\n\n          ═════════════════════════════════════════════════════════"
+
+              return {
+                  "form_text": form,
+                  "form_data": {
+                      "flow_no": flow_no,
+                      "title": title,
+                      "extract": extract,
+                      "calculate": calc,
+                      "validate": validate,
+                      "reimbursement_type": reimbursement_type
+                  },
+                  "can_submit": can_submit
+              }
+        code_language: python3
+        outputs:
+          form_text:
+            children: null
+            type: string
+          form_data:
+            children: null
+            type: object
+          can_submit:
+            children: null
+            type: boolean
+        selected: false
+        title: 表单生成
+        type: code
+        variables:
+        - value_selector:
+          - calculate_code
+          - extract_data
+          value_type: object
+          variable: extract_data
+        - value_selector:
+          - calculate_code
+          - calculate_result
+          value_type: object
+          variable: calculate_result
+        - value_selector:
+          - validate_llm
+          - text
+          value_type: string
+          variable: validate_result
+        - value_selector:
+          - calculate_code
+          - reimbursement_type
+          value_type: string
+          variable: reimbursement_type
+      height: 51
+      id: form_code
+      position:
+        x: 1580
+        y: 265
+      positionAbsolute:
+        x: 1580
+        y: 265
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+
+    # ==================== 最终回复 ====================
+    - data:
+        answer: '{{#form_code.form_text#}}'
+        selected: false
+        title: 直接回复
+        type: answer
+        variables: []
+      height: 102
+      id: final_answer
+      position:
+        x: 1880
+        y: 265
+      positionAbsolute:
+        x: 1880
+        y: 265
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+
+    # ==================== 备注说明 ====================
+    - data:
+        author: system
+        desc: ''
+        height: 220
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"差旅报销智能体工作流","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"1. 报销类型识别：识别出差申请/CRM工单","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"2. 信息提取：带出出差/工单信息+票据识别","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"3. 费用计算：交通费+住宿费+补贴扣除","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"4. 合规校验：必填项、票据、金额校验","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"5. 表单生成：生成完整报销表单","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"注：票据识别和OA/CRM数据使用模拟数据","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: 工作流说明
+        type: ''
+        width: 300
+      height: 220
+      id: note_workflow_desc
+      position:
+        x: 80
+        y: 80
+      positionAbsolute:
+        x: 80
+        y: 80
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 300
+
+    # ==================== 补贴规则备注 ====================
+    - data:
+        author: system
+        desc: ''
+        height: 280
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"补贴计算规则","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"【基础补贴】","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"• 国内：100元/天","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"• 国外：按目的地标准","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"【时间扣除】","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"出发：10-14点扣20%，14-18扣40%，18-24扣70%","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"返回：10-14点扣70%，14-18扣40%，18-24不扣","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"【餐费扣除】国内/国外","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"• 早餐：10%/20%","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"• 午餐：20%/30%","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"• 晚餐：20%/30%","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: green
+        title: 补贴规则
+        type: ''
+        width: 280
+      height: 280
+      id: note_subsidy_rule
+      position:
+        x: 80
+        y: 380
+      positionAbsolute:
+        x: 80
+        y: 380
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 280
+
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+  rag_pipeline_variables: []
